@@ -1,1 +1,3 @@
-./noncanonical /dev/ttyS0
+make server
+
+./noncanonical "/dev/ttyS0"

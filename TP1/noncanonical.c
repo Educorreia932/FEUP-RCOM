@@ -85,5 +85,6 @@ int main(int argc, char **argv) {
 
 	tcsetattr(fd, TCSANOW, &oldtio);
 	close(fd);
+	
 	return 0;
 }

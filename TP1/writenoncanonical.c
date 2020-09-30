@@ -23,10 +23,7 @@ int main(int argc, char **argv) {
 	char buf[255];
 	int i, sum = 0, speed = 0;
 
-	if ((argc < 2) ||
-		((strcmp("/dev/ttyS0", argv[1]) != 0) &&
-		 (strcmp("/dev/ttyS1", argv[1]) != 0)))
-	{
+	if ((argc < 2) || ((strcmp("/dev/ttyS0", argv[1]) != 0) && (strcmp("/dev/ttyS1", argv[1]) != 0))) {
 		printf("Usage:\tnserial SerialPort\n\tex: nserial /dev/ttyS1\n");
 		exit(1);
 	}
@@ -44,7 +41,7 @@ int main(int argc, char **argv) {
 	}
 
 	if (tcgetattr(fd, &oldtio) == -1) { 
-		/* save current port settings */
+		/* Save current port settings */
 		perror("tcgetattr");
 		exit(-1);
 	}
@@ -54,7 +51,7 @@ int main(int argc, char **argv) {
 	newtio.c_iflag = IGNPAR;
 	newtio.c_oflag = 0;
 
-	/* set input mode (non-canonical, no echo,...) */
+	/* Set input mode (non-canonical, no echo,...) */
 	newtio.c_lflag = 0;
 
 	newtio.c_cc[VTIME] = 0; /* inter-character timer unused */
@@ -62,8 +59,8 @@ int main(int argc, char **argv) {
 
 	/* 
     VTIME e VMIN devem ser alterados de forma a proteger com um temporizador a 
-    leitura do(s) pr�ximo(s) caracter(es)
-   */
+    leitura do(s) próximo(s) caracter(es)
+    */
 
 	tcflush(fd, TCIOFLUSH);
 
@@ -74,20 +71,15 @@ int main(int argc, char **argv) {
 
 	printf("New termios structure set\n");
 
-	for (i = 0; i < 255; i++) {
-		buf[i] = 'a';
-	}
+	/* User input */
 
-	/*testing*/
-	buf[25] = '\n';
+ 	printf("What do you want to send?\n");
+	fgets(buf, sizeof buf, stdin);
+	buf[strlen(buf) - 1] = '\0';
 
-	res = write(fd, buf, 255);
+	res = write(fd, buf, strlen(buf));
+
 	printf("%d bytes written\n", res);
-
-	/* 
-    O ciclo FOR e as instru��es seguintes devem ser alterados de modo a respeitar 
-    o indicado no gui�o 
-   */
 
 	if (tcsetattr(fd, TCSANOW, &oldtio) == -1) {
 		perror("tcsetattr");
@@ -95,5 +87,6 @@ int main(int argc, char **argv) {
 	}
 
 	close(fd);
+
 	return 0;
 }

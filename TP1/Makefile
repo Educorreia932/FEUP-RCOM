@@ -21,11 +21,13 @@ options:
 .c.o:
 	${CC} -c ${CFLAGS} $<
 
-rcom: 
-	${CC} ${SRC_SERVER} -o ${NAME_SERVER}
+client:
 	${CC} ${SRC_CLIENT} -o ${NAME_CLIENT}
+
+server:
+	${CC} ${SRC_SERVER} -o ${NAME_SERVER}
 
 clean:
 	rm -f ${NAME_SERVER} ${OBJ_SERVER} ${NAME_CLIENT} ${OBJ_CLIENT}
 
-.PHONY: all options clean rcom
+.PHONY: all options clean client server
