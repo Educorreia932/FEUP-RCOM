@@ -1,0 +1,1 @@
+./noncanonical /dev/ttyS0
