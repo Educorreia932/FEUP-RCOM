@@ -1,5 +1,6 @@
 /*Non-Canonical Input Processing*/
 
+#include <errno.h>
 #include <fcntl.h>
 #include <signal.h>
 #include <stdbool.h>
@@ -47,7 +48,7 @@ int main(int argc, char** argv) {
 	because we don't want to get killed if linenoise sends CTRL-C.
 	*/
 
-	fd = open(argv[1], O_RDWR | O_NOCTTY | O_NONBLOCK);
+	fd = open(argv[1], O_RDWR | O_NOCTTY);
 
 	if (fd < 0) {
 		perror(argv[1]);
@@ -87,11 +88,17 @@ int main(int argc, char** argv) {
 
 	//----------------------------
 
-	(void)signal(SIGALRM, atende);  // Installs co-routine that attends interruption
+	struct sigaction action;
+
+	action.sa_handler = &atende;
+	sigemptyset (&action.sa_mask);
+	action.sa_flags = 0;
+
+	sigaction(SIGALRM, &action, NULL);  // Installs co-routine that attends interruption
 
 	char msg[5];
 
-	while (counter < 4) { /* loop for input */
+	while (counter <= 3) { /* loop for input */
 		if (flag) {
 			alarm(3);  // Activactes 3 second alarm
 			flag = false;
@@ -106,12 +113,15 @@ int main(int argc, char** argv) {
 			printf("Sent SET message. \n");
 		}
 
-		res = read(fd, buf, 5);  // Receive msg
+		res = read(fd, buf, 5); // Receive msg
 
-		// if (res == -1) {
-		// 	perror("Failed to read.");
-		// 	exit(1);
-		// }
+		if (res == -1) {
+			// Read was not interrupted
+			if (errno != EINTR) {
+				perror("Failed to read.");
+				exit(1);		
+			}
+		}
 
 		if (buf[0] == FLAG &&  // Check msg
 			buf[1] == A_RC_RESP && buf[2] == C_UA && buf[3] == A_RC_RESP ^ C_UA &&
@@ -129,8 +139,8 @@ int main(int argc, char** argv) {
 
 	sleep(1);
 	if (tcsetattr(fd, TCSANOW, &oldtio) == -1) {
-	perror("tcsetattr");
-	exit(-1);
+		perror("tcsetattr");
+		exit(-1);
 	}
 
 	close(fd);
