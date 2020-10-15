@@ -8,6 +8,15 @@
 #define C_SET 0x03
 #define C_UA 0x07
 
+typedef enum {
+	START,
+	FLAG_RCV,
+	A_RCV,
+	C_RCV,
+	BCC_RCV,
+	STOP
+} state;
+
 int send_trama(int fd, char a, char c) {
 	unsigned char buf[5];
 

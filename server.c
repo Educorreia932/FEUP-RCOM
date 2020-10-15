@@ -16,12 +16,12 @@
 #define FALSE 0
 #define TRUE 1
 
-volatile int STOP = FALSE;
-
 int main(int argc, char** argv) {
 	int fd, c, res;
 	struct termios oldtio, newtio;
 	char buf[255];
+	state current_state = START;
+	int fields[5] = {FLAG, A_EM_CMD, C_SET, A_EM_CMD ^ C_SET, FLAG};
 
 	if ((argc < 2) || ((strcmp("/dev/ttyS10", argv[1]) != 0) &&
 						(strcmp("/dev/ttyS11", argv[1]) != 0))) {
@@ -64,27 +64,34 @@ int main(int argc, char** argv) {
 	tcflush(fd, TCIOFLUSH);
 
 	if (tcsetattr(fd, TCSANOW, &newtio) == -1) {
-	perror("tcsetattr");
-	exit(-1);
+		perror("tcsetattr");
+		exit(-1);
 	}
 
 	printf("New termios structure set\n");
 
-	res = read(fd, buf, 5);  // received message
+	res = read(fd, buf, 1);  // received message
 
 	if (res == -1) {
-	perror("Failed to read.");
-	exit(1);
+		perror("Failed to read.");
+		exit(1);
 	}
 
-	if (buf[0] == FLAG &&  // check msg
-		buf[1] == A_EM_CMD && buf[2] == C_SET && buf[3] == A_EM_CMD ^ C_SET &&
-		buf[4] == FLAG) {
-	printf("Received SET msg\n");
+	// State machine
+	if (*buf == fields[current_state]) 
+		current_state++;
+
+	else if (*buf == FLAG) // FLAG_RCV
+		current_state = FLAG_RCV;
+
+	else // OTHER_RCV
+		current_state = START;
+
+	if (current_state == STOP) {
+		printf("Received SET msg\n");
 	}
 
 	// write message to serial port
-	sleep(40);
 	res = send_trama(fd, A_RC_RESP, C_UA);
 
 	if (res == -1) {

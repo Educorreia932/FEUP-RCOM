@@ -20,15 +20,13 @@
 #define FALSE 0
 #define TRUE 1
 
-volatile int STOP = FALSE;
-
 bool flag = true;
-int counter = true;
+int alarm_counter = true;
 
 void atende() { // atende alarme
-	printf("alarme # %d\n", counter);
+	printf("alarme # %d\n", alarm_counter);
 	flag = true;
-	counter++;
+	alarm_counter++;
 }
 
 int main(int argc, char** argv) {
@@ -36,6 +34,8 @@ int main(int argc, char** argv) {
 	struct termios oldtio, newtio;
 	char buf[255];
 	int i, sum = 0, speed = 0;
+	state current_state = START;
+	int fields[5] = {FLAG, A_RC_RESP, C_UA, A_RC_RESP ^ C_UA, FLAG};
 
 	if ((argc < 2) || ((strcmp("/dev/ttyS10", argv[1]) != 0) &&
 						(strcmp("/dev/ttyS11", argv[1]) != 0))) {
@@ -98,7 +98,7 @@ int main(int argc, char** argv) {
 
 	char msg[5];
 
-	while (counter <= 3) { /* loop for input */
+	while (alarm_counter <= 3) { /* loop for input */
 		if (flag) {
 			alarm(3);  // Activactes 3 second alarm
 			flag = false;
@@ -113,7 +113,7 @@ int main(int argc, char** argv) {
 			printf("Sent SET message. \n");
 		}
 
-		res = read(fd, buf, 5); // Receive msg
+		res = read(fd, buf, 1); // Receive msg
 
 		if (res == -1) {
 			// Read was not interrupted
@@ -123,21 +123,30 @@ int main(int argc, char** argv) {
 			}
 		}
 
-		if (buf[0] == FLAG &&  // Check msg
-			buf[1] == A_RC_RESP && buf[2] == C_UA && buf[3] == A_RC_RESP ^ C_UA &&
-			buf[4] == FLAG) {
-			alarm(0);  // pending alarm is canceled
+		// State machine
+		if (*buf == fields[current_state]) 
+			current_state++;
+
+		else if (*buf == FLAG) // FLAG_RCV
+			current_state = FLAG_RCV;
+
+		else // OTHER_RCV
+			current_state = START;
+
+		if (current_state == STOP) {
+			alarm(0);  // Pending alarm is canceled
 			printf("Received UA msg\n");
 			break;
 		}
 	}
 
-	if (counter > 3)
+	if (alarm_counter > 3)
 		printf("Failed to receive UA msg.");
 
 	//----------------------------
 
 	sleep(1);
+
 	if (tcsetattr(fd, TCSANOW, &oldtio) == -1) {
 		perror("tcsetattr");
 		exit(-1);
