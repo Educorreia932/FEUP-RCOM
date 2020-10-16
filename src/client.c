@@ -37,10 +37,18 @@ int main(int argc, char** argv) {
 	state current_state = START;
 	int fields[5] = {FLAG, A_RC_RESP, C_UA, A_RC_RESP ^ C_UA, FLAG};
 
+	struct linkLayer link;
+
+	strcpy(link.port, argv[1]);
+	link.baudRate = BAUDRATE;
+	link.sequenceNumber = 0;
+	link.timeout = TIMEOUT;
+	link.numTransmissions = NUM_TRANSMITIONS;
+
 	if ((argc < 2) || ((strcmp("/dev/ttyS10", argv[1]) != 0) &&
 						(strcmp("/dev/ttyS11", argv[1]) != 0))) {
-	printf("Usage:\tnserial SerialPort\n\tex: nserial /dev/ttyS1\n");
-	exit(1);
+		printf("Usage:\tnserial SerialPort\n\tex: nserial /dev/ttyS1\n");
+		exit(1);
 	}
 
 	/*
@@ -98,12 +106,12 @@ int main(int argc, char** argv) {
 
 	char msg[5];
 
-	while (alarm_counter <= 3) { /* loop for input */
+	while (alarm_counter <= link.numTransmissions) { /* loop for input */
 		if (flag) {
-			alarm(3);  // Activactes 3 second alarm
+			alarm(link.timeout);  // Activactes 3 second alarm
 			flag = false;
 
-			int n = send_trama(fd, A_EM_CMD, C_SET);  // Send SET msg
+			int n = send_frame(fd, A_EM_CMD, C_SET);  // Send SET msg
 
 			if (n == -1) {
 				perror("Failed to send SET message.");

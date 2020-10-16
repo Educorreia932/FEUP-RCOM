@@ -11,7 +11,6 @@
 
 #include "utils.h"
 
-#define BAUDRATE B38400
 #define _POSIX_SOURCE 1 /* POSIX compliant source */
 #define FALSE 0
 #define TRUE 1
@@ -22,11 +21,19 @@ int main(int argc, char** argv) {
 	char buf[255];
 	state current_state = START;
 	int fields[5] = {FLAG, A_EM_CMD, C_SET, A_EM_CMD ^ C_SET, FLAG};
+	
+	struct linkLayer link;
 
-	if ((argc < 2) || ((strcmp("/dev/ttyS10", argv[1]) != 0) &&
-						(strcmp("/dev/ttyS11", argv[1]) != 0))) {
-	printf("Usage:\tnserial SerialPort\n\tex: nserial /dev/ttyS1\n");
-	exit(1);
+	strcpy(link.port, argv[1]);
+	link.baudRate = BAUDRATE;
+	link.sequenceNumber = 0;
+	link.timeout = TIMEOUT;
+	link.numTransmissions = NUM_TRANSMITIONS;
+
+	if ((argc < 2) || ((strcmp("/dev/ttyS10", link.port) != 0) &&
+						(strcmp("/dev/ttyS11", link.port) != 0))) {
+		printf("Usage:\tnserial SerialPort\n\tex: nserial /dev/ttyS1\n");
+		exit(1);
 	}
 
 	/*
@@ -91,17 +98,20 @@ int main(int argc, char** argv) {
 		printf("Received SET msg\n");
 	}
 
-	// write message to serial port
-	res = send_trama(fd, A_RC_RESP, C_UA);
+	// Write acknowledgment message to serial port
+	res = send_frame(fd, A_RC_RESP, C_UA);
 
 	if (res == -1) {
-	perror("Failed to send UA msg.\n");
-	exit(1);
+		perror("Failed to send UA msg.\n");
+		exit(1);
 	}
 
 	printf("Sent message UA.\n");
 
-	sleep(1);
+	for (int i = 0; i < 20; i++) {
+		send_frame(fd, A_RC_RESP, C_UA);
+	}
+
 	tcsetattr(fd, TCSANOW, &oldtio);
 	close(fd);
 	return 0;
