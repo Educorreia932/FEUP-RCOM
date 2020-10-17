@@ -34,8 +34,6 @@ int main(int argc, char** argv) {
 	struct termios oldtio, newtio;
 	char buf[255];
 	int i, sum = 0, speed = 0;
-	state current_state = START;
-	int fields[5] = {FLAG, A_RC_RESP, C_UA, A_RC_RESP ^ C_UA, FLAG};
 
 	struct linkLayer link;
 
@@ -132,20 +130,7 @@ int main(int argc, char** argv) {
 		}
 
 		// State machine
-		if (*buf == fields[current_state]) 
-			current_state++;
 
-		else if (*buf == FLAG) // FLAG_RCV
-			current_state = FLAG_RCV;
-
-		else // OTHER_RCV
-			current_state = START;
-
-		if (current_state == STOP) {
-			alarm(0);  // Pending alarm is canceled
-			printf("Received UA msg\n");
-			break;
-		}
 	}
 
 	if (alarm_counter > 3)
@@ -153,7 +138,11 @@ int main(int argc, char** argv) {
 
 	//----------------------------
 
-	sleep(1);
+	// Send data
+
+	for (int i = 0; i < 20; i++) {
+		send_frame(fd, A_RC_RESP, C_UA);
+	}
 
 	if (tcsetattr(fd, TCSANOW, &oldtio) == -1) {
 		perror("tcsetattr");

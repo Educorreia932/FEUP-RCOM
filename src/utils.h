@@ -6,21 +6,15 @@
 #define A_EM_RESP 0x01
 
 #define C_SET 0x03
+#define C_DISC 0x0C
 #define C_UA 0x07
+#define C_RR 0x05 // Apply OR
+#define C_REJ 0x01
 
 #define BAUDRATE B38400
 #define TIMEOUT 3
 #define NUM_TRANSMITIONS 3
 #define MAX_SIZE 255
-
-typedef enum {
-	START,
-	FLAG_RCV,
-	A_RCV,
-	C_RCV,
-	BCC_RCV,
-	STOP
-} state;
 
 struct applicationLayer {
 	int fileDescriptor; /*Descritor correspondente à porta série*/
@@ -43,6 +37,18 @@ int send_frame(int fd, char a, char c) {
 	buf[1] = a;
 	buf[2] = c;
 	buf[3] = a ^ c; // BCC
+	buf[4] = FLAG;
+
+	return write(fd, buf, 5);
+}
+
+int send_info_frame(int fd, char a, char c, char* d) {
+	unsigned char buf[MAX_SIZE + 6];
+
+	buf[0] = FLAG;
+	buf[1] = a;
+	buf[2] = c;
+	buf[3] = a ^ c; // BCC1
 	buf[4] = FLAG;
 
 	return write(fd, buf, 5);

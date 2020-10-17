@@ -108,10 +108,6 @@ int main(int argc, char** argv) {
 
 	printf("Sent message UA.\n");
 
-	for (int i = 0; i < 20; i++) {
-		send_frame(fd, A_RC_RESP, C_UA);
-	}
-
 	tcsetattr(fd, TCSANOW, &oldtio);
 	close(fd);
 	return 0;
