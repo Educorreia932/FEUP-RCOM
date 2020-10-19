@@ -18,7 +18,7 @@ struct applicationLayer
 
 //TODO: Definir estrutura dos pacotes 
 
-int llopen(int port, enum Status stat);
+int llopen(char * port, enum Status stat); //porta devia ser int ???
 int llread(int fd, char * buffer);
 int llwrite(int fd, char * buffer, int length);
 int llclose(int fd);
