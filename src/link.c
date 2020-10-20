@@ -63,7 +63,11 @@ int open_port(char * port)
 	sigemptyset (&action.sa_mask);
 	action.sa_flags = 0;
 
-	sigaction(SIGALRM, &action, NULL);  // Installs co-routine that attends interruption
+	if( sigaction(SIGALRM, &action, NULL) < 0)  // Installs co-routine that attends interruption
+	{
+		perror("Failed to set SIGALARM handler.\n");
+		exit(1);
+	}
 
     return fd;
 }

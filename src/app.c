@@ -3,6 +3,7 @@
 #include "link.h"
 
 #include <unistd.h>
+#include <sys/stat.h>
 
 struct applicationLayer app;
 FILE * fp;
@@ -47,13 +48,17 @@ int open_file(char * filename)
         exit(1);
     }
     
-    if(app.status == TRANSMITTER)
+    if(app.status == TRANSMITTER) //If transmitter, need to send Start Packet
     {
-        //Get size
-        fseek(fp, 0L, SEEK_END);
-        long int filesize = ftell(fp); // filesize is in bytes
-        
-        rewind(fp); // Go back to beggining
+        struct stat st;
+
+        if(stat(filename, &st) < 0)
+        {
+            perror("Failed stat call.\n");
+            exit(1);
+        }
+
+        int fileSize = st.st_size; // File size
 
         //TODO: control_packet(start, filename, filesize);
     }
@@ -68,12 +73,10 @@ int llopen(char * port, enum Status stat)
     int fd = open_port(port);
     app.fileDescriptor = fd;
 
-    //TODO: Send start command
     open_file(FILETOTRANSFER); //Open file & set TLV values if transmitter
 
     /* if(app.status == TRANSMITTER){
-        TODO: Manda mensagem SET
-        TODO: RECEBE mensagem UA
+        //TODO: Send START PACKET
     } */
 
     return fd;
