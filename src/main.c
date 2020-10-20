@@ -14,14 +14,20 @@ int main(int argc, char** argv) {
 		exit(1);
 	}
 
-    //Establish connection
+    //Ask app to establish connection
     int fd;
     if(strcmp("-c", argv[2]) == 0)
         fd = llopen(argv[1], TRANSMITTER);
     else fd = llopen(argv[1], RECEIVER);
 
-    if(fd < 0) exit(-1);
+    if(fd < 0){
+        perror("Failed to establish connection.\n");
+        exit(1);
+    }
     
+    
+    //TODO: Ask app to open image and send it or receive it
+    //TODO: Receive confirmation that app finished sending/receiving
     
 
     return 0;

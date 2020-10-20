@@ -1,9 +1,17 @@
 
+#define FILETOTRANSFER "../files/pinguin.gif"
+//Control Packet
+#define T_FILENAME 0x00; //T1
+#define T_FILESIZE 0x01; //T2
+
 enum Control{
     data,
     start,
     end
 };
+
+
+//App Layer
 
 enum Status{
     TRANSMITTER,
@@ -16,7 +24,8 @@ struct applicationLayer
     int status;     /*TRANSMITTER | RECEIVER*/
 };
 
-//TODO: Definir estrutura dos pacotes 
+
+
 
 int llopen(char * port, enum Status stat); //porta devia ser int ???
 int llread(int fd, char * buffer);
