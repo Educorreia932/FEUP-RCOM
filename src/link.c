@@ -65,8 +65,7 @@ int establish_connection(char * port, enum Status stat) {
 
 
 	//Set alarm handler
-	if(stat == TRANSMITTER)
-	{
+	if(stat == TRANSMITTER) {
 		//Alarm
 		action.sa_handler = &atende;
 		sigemptyset (&action.sa_mask);
@@ -78,7 +77,6 @@ int establish_connection(char * port, enum Status stat) {
 			exit(1);
 		}
 	}
-
 
 	//Set state machine
 	struct state_machine stm;

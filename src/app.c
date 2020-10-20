@@ -9,14 +9,16 @@
 struct applicationLayer app;
 FILE * fp;
 
-int control_packet(enum Control type, char * filename, long int filesize) {
+char* control_packet(enum Control type, char * filename, long int filesize) {
+    char* packet;
+
     if(type == start){
         size_t L1 = strlen(filename);
         int L2 = ceil(filesize / 8);
         
         int packet_size = 3 + L1 + 2 + L2; // Number of bytes
 
-        char* packet = malloc(packet_size);
+        packet = malloc(packet_size);
 
         packet[0] = type;
         packet[1] = T_FILENAME;
@@ -37,13 +39,19 @@ int control_packet(enum Control type, char * filename, long int filesize) {
         }
     }
 
-    //else
-    // TODO: end packet
+   else {
+       packet = malloc(1);
+       packet[0] = type;
+   }
+
+   return packet;
 }
+
+
 
 int open_file(char * filename)
 {    
-    //Open file 
+    // Open file 
     if(app.status == TRANSMITTER) 
         fp = fopen(filename, "r"); //Open for reading
 		
@@ -53,7 +61,7 @@ int open_file(char * filename)
         fp = fopen(copy_filename, "w"); //Open for writing
     }
 
-    if(fp == NULL){
+    if (fp == NULL){
         perror("Failed to open file.\n");
         exit(1);
     }
@@ -70,37 +78,36 @@ int open_file(char * filename)
 
         int filesize = st.st_size; // File size
 
-        control_packet(start, filename, filesize);
+        char * packet = control_packet(start, filename, filesize);
+
+        llwrite(app.fileDescriptor, packet, sizeof(packet));
     }
 
     return 0;
 }
 
-int llopen(char * port, enum Status stat)
-{
+int llopen(char * port, enum Status stat) {
     app.status = stat;
     
     int fd = establish_connection(port, stat);
     app.fileDescriptor = fd;
 
-    open_file(FILETOTRANSFER); //Open file & set TLV values if transmitter
-    /* if(app.status == TRANSMITTER){
-        //TODO: Send START PACKET
-    }
-    */
+    open_file(FILETOTRANSFER); //Open file & send Start packet
 
     return fd;
 }
 
 int llclose(int fd)
 {
+    char * packet = control_packet(end, "", 0); // Check if it's necessary to fill filesize and filename
+    llwrite(fd, packet, sizeof(packet));
+
     if(fclose(fp) < 0)
     {
         perror("Failed to close file.\n");
         exit(1);
     }
 
-    //TODO: Send end command
     return close(fd); 
 }
 
