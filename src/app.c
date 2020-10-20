@@ -1,6 +1,5 @@
 
 #include "app.h"
-#include "link.h"
 
 #include <unistd.h>
 #include <sys/stat.h>
@@ -34,6 +33,8 @@ int control_packet(enum Control type, char * filename, long int filesize)
         */
         
     }
+    //else
+    // TODO: end packet
 }
 
 int open_file(char * filename)
@@ -70,20 +71,27 @@ int llopen(char * port, enum Status stat)
 {
     app.status = stat;
     
-    int fd = open_port(port);
+    int fd = establish_connection(port, stat);
     app.fileDescriptor = fd;
 
     open_file(FILETOTRANSFER); //Open file & set TLV values if transmitter
 
     /* if(app.status == TRANSMITTER){
         //TODO: Send START PACKET
-    } */
+    }
+    */
 
     return fd;
 }
 
 int llclose(int fd)
 {
+    if(fclose(fp) < 0)
+    {
+        perror("Failed to close file.\n");
+        exit(1);
+    }
+
     //TODO: Send end command
     return close(fd); 
 }

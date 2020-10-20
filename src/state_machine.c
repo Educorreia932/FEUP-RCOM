@@ -1,30 +1,7 @@
-#include "utils.h"
-
-#include <stdbool.h>
-
-enum state {
-	START,
-	FLAG_RCV,
-	A_ANSWER_RCV,
-    A_CMD_RCV,
-	C_ANSWER_RCV,
-    C_CMD_RCV,
-    C_I_RCV,
-    BBC_0_RCV,
-    BBC_1_RCV,
-    BBC_2_RCV,
-    D_RCV,
-	STOP
-};
-
-struct state_machine {
-    enum state current_state;
-    bool is_client;
-};
+#include "state_machine.h"
 
 void change_state(struct state_machine machine, char field) {
     enum state current_state = machine.current_state;
-    bool is_client = machine.is_client;
 
     switch (machine.current_state) {
         case START:

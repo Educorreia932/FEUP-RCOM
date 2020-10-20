@@ -1,13 +1,13 @@
 #include "link.h"
 
+
 struct linkLayer link;
 struct termios oldtio, newtio;
 struct sigaction action;
 int fd;
 
 
-
-int open_port(char * port)
+int establish_connection(char * port, enum Status stat)
 {
     strcpy(link.port, port);
 	link.baudRate = BAUDRATE;
@@ -58,16 +58,32 @@ int open_port(char * port)
 	printf("New termios structure set\n");
 
 
-    //Alarm
-	action.sa_handler = &atende;
-	sigemptyset (&action.sa_mask);
-	action.sa_flags = 0;
-
-	if( sigaction(SIGALRM, &action, NULL) < 0)  // Installs co-routine that attends interruption
+	//Set alarm handler
+	if(stat == TRANSMITTER)
 	{
-		perror("Failed to set SIGALARM handler.\n");
-		exit(1);
+		//Alarm
+		action.sa_handler = &atende;
+		sigemptyset (&action.sa_mask);
+		action.sa_flags = 0;
+
+		if( sigaction(SIGALRM, &action, NULL) < 0)  // Installs co-routine that attends interruption
+		{
+			perror("Failed to set SIGALARM handler.\n");
+			exit(1);
+		}
 	}
+
+
+	//Set state machine
+	struct state_machine stm;
+	
+	stm.stat = stat;
+	stm.current_state = START;
+
+	//Send SET message if transmitter 
+	//Receive SET message if receptor
+	//Send UA message if transmitter
+	//Receive UA message if receptor
 
     return fd;
 }

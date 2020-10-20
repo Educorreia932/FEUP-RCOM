@@ -1,3 +1,4 @@
+#include "state_machine.h"
 
 #include <errno.h>
 #include <fcntl.h>
@@ -17,7 +18,6 @@
 #define MAX_SIZE 255
 
 
-
 struct linkLayer {
 	char port[20]; /* Dispositivo /dev/ttySx, x = 0, 1 */
 	int baudRate; /* Velocidade de transmissão */
@@ -27,4 +27,4 @@ struct linkLayer {
 	char frame[MAX_SIZE]; /* Trama */
 };
 
-int open_port(char * port);
+int establish_connection(char * port, enum Status stat);
