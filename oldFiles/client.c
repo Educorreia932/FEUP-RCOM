@@ -35,13 +35,13 @@ int main(int argc, char** argv) {
 	char buf[255];
 	int i, sum = 0, speed = 0;
 
-	struct linkLayer link;
+	struct linkLayer llink;
 
-	strcpy(link.port, argv[1]);
-	link.baudRate = BAUDRATE;
-	link.sequenceNumber = 0;
-	link.timeout = TIMEOUT;
-	link.numTransmissions = NUM_TRANSMITIONS;
+	strcpy(llink.port, argv[1]);
+	llink.baudRate = BAUDRATE;
+	llink.sequenceNumber = 0;
+	llink.timeout = TIMEOUT;
+	llink.numTransmissions = NUM_TRANSMITIONS;
 
 	if ((argc < 2) || ((strcmp("/dev/ttyS10", argv[1]) != 0) &&
 						(strcmp("/dev/ttyS11", argv[1]) != 0))) {
@@ -104,9 +104,9 @@ int main(int argc, char** argv) {
 
 	char msg[5];
 
-	while (alarm_counter <= link.numTransmissions) { /* loop for input */
+	while (alarm_counter <= llink.numTransmissions) { /* loop for input */
 		if (flag) {
-			alarm(link.timeout);  // Activactes 3 second alarm
+			alarm(llink.timeout);  // Activactes 3 second alarm
 			flag = false;
 
 			int n = send_frame(fd, A_EM_CMD, C_SET);  // Send SET msg

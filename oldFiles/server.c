@@ -22,16 +22,16 @@ int main(int argc, char** argv) {
 	state current_state = START;
 	int fields[5] = {FLAG, A_EM_CMD, C_SET, A_EM_CMD ^ C_SET, FLAG};
 	
-	struct linkLayer link;
+	struct linkLayer llink;
 
-	strcpy(link.port, argv[1]);
-	link.baudRate = BAUDRATE;
-	link.sequenceNumber = 0;
-	link.timeout = TIMEOUT;
-	link.numTransmissions = NUM_TRANSMITIONS;
+	strcpy(llink.port, argv[1]);
+	llink.baudRate = BAUDRATE;
+	llink.sequenceNumber = 0;
+	llink.timeout = TIMEOUT;
+	llink.numTransmissions = NUM_TRANSMITIONS;
 
-	if ((argc < 2) || ((strcmp("/dev/ttyS10", link.port) != 0) &&
-						(strcmp("/dev/ttyS11", link.port) != 0))) {
+	if ((argc < 2) || ((strcmp("/dev/ttyS10", llink.port) != 0) &&
+						(strcmp("/dev/ttyS11", llink.port) != 0))) {
 		printf("Usage:\tnserial SerialPort\n\tex: nserial /dev/ttyS1\n");
 		exit(1);
 	}

@@ -1,19 +1,25 @@
 #include "link.h"
 
-
-struct linkLayer link;
+struct linkLayer llink;
 struct termios oldtio, newtio;
 struct sigaction action;
 int fd;
 
+bool flag = true;
+int alarm_counter = 0;
 
-int establish_connection(char * port, enum Status stat)
-{
-    strcpy(link.port, port);
-	link.baudRate = BAUDRATE;
-	link.sequenceNumber = 0;
-	link.timeout = TIMEOUT;
-	link.numTransmissions = NUM_TRANSMITIONS;
+void atende() { // atende alarme
+	printf("alarme # %d\n", alarm_counter);
+	flag = true;
+	alarm_counter++;
+}
+
+int establish_connection(char * port, enum Status stat) {
+    strcpy(llink.port, port);
+	llink.baudRate = BAUDRATE;
+	llink.sequenceNumber = 0;
+	llink.timeout = TIMEOUT;
+	llink.numTransmissions = NUM_TRANSMITIONS;
 
     /*
 	Open serial port device for reading and writing and not as controlling tty
@@ -77,22 +83,16 @@ int establish_connection(char * port, enum Status stat)
 	//Set state machine
 	struct state_machine stm;
 	
-	stm.stat = stat;
+	stm.status = stat;
 	stm.current_state = START;
 
 	//Send SET message if transmitter 
 	//Receive SET message if receptor
+
+	
 	//Send UA message if transmitter
 	//Receive UA message if receptor
 
     return fd;
 }
 
-bool flag = true;
-int alarm_counter = 0;
-
-void atende() { // atende alarme
-	printf("alarme # %d\n", alarm_counter);
-	flag = true;
-	alarm_counter++;
-}

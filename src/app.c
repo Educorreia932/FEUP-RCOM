@@ -3,36 +3,40 @@
 
 #include <unistd.h>
 #include <sys/stat.h>
+#include <string.h>
+#include <math.h>
 
 struct applicationLayer app;
 FILE * fp;
 
-int control_packet(enum Control type, char * filename, long int filesize)
-{
+int control_packet(enum Control type, char * filename, long int filesize) {
     if(type == start){
-        char packet[5]; // TODO: Size
-
-        packet[0] = type; // C
+        size_t L1 = strlen(filename);
+        int L2 = ceil(filesize / 8);
         
-        //TLC1
-        packet[1] = T_FILENAME; //T1
-        packet[2] = sizeof(filename); //L1 number of bytes
-        // TODO: add name //V1
-        /*
-        int n = L_fileName + 1;
+        int packet_size = 3 + L1 + 2 + L2; // Number of bytes
 
-        for (int c = 0; c < sizeof(filename); c++){
-            packet[n++] = filename[c];
+        char* packet = malloc(packet_size);
+
+        packet[0] = type;
+        packet[1] = T_FILENAME;
+        packet[2] = L1;
+
+        int c;
+
+        for (c = 3; c < L1 + 3; c++) 
+            packet[c] = filename[c - 3];
+        
+        packet[c++] = T_FILESIZE;
+        packet[c++] = L2;
+
+        for (c = 3; c < L1 + 3; c++)  {
+            int octet = (filesize >>= 8);
+
+            packet[c] = filename[c - 3];
         }
-        */
-
-        //TLC2
-        /*
-        packet[n++] = T_FILESIZE; 
-        packet[n++] = sizeof(filename);
-        */
-        
     }
+
     //else
     // TODO: end packet
 }
@@ -40,16 +44,21 @@ int control_packet(enum Control type, char * filename, long int filesize)
 int open_file(char * filename)
 {    
     //Open file 
-    if(app.status == TRANSMITTER)
+    if(app.status == TRANSMITTER) 
         fp = fopen(filename, "r"); //Open for reading
-    else fp = fopen(filename, "w"); //Open for writing
+		
+    else {
+        // TODO: This is only needed when using SOCAT on the same PC
+        char copy_filename[255] = "../files/pinguim_copia.gif";
+        fp = fopen(copy_filename, "w"); //Open for writing
+    }
 
     if(fp == NULL){
         perror("Failed to open file.\n");
         exit(1);
     }
     
-    if(app.status == TRANSMITTER) //If transmitter, need to send Start Packet
+    if(app.status == TRANSMITTER) // If transmitter, need to send Start Packet
     {
         struct stat st;
 
@@ -59,9 +68,9 @@ int open_file(char * filename)
             exit(1);
         }
 
-        int fileSize = st.st_size; // File size
+        int filesize = st.st_size; // File size
 
-        //TODO: control_packet(start, filename, filesize);
+        control_packet(start, filename, filesize);
     }
 
     return 0;
@@ -75,7 +84,6 @@ int llopen(char * port, enum Status stat)
     app.fileDescriptor = fd;
 
     open_file(FILETOTRANSFER); //Open file & set TLV values if transmitter
-
     /* if(app.status == TRANSMITTER){
         //TODO: Send START PACKET
     }

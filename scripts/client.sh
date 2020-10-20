@@ -1,5 +1,5 @@
-cd ../src 
+cd ../src
 
-make client
+make clean & make
 
-./client "/dev/ttyS10" "/dev/ttyS11"
+./main -c "/dev/ttyS11"

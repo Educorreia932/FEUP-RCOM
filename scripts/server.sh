@@ -1,5 +1,5 @@
-cd ../src 
+cd ../src
 
-make server
+make clean & make
 
-./server "/dev/ttyS11" "/dev/ttyS10"
+./main -s "/dev/ttyS10"

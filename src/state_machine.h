@@ -16,11 +16,6 @@
 #define NUM_TRANSMITIONS 3
 #define MAX_SIZE 255
 
-enum Status{
-    TRANSMITTER,
-    RECEIVER
-};
-
 enum state {
 	START,
 	FLAG_RCV,
@@ -36,8 +31,13 @@ enum state {
 	STOP
 };
 
+enum Status {
+    TRANSMITTER,
+    RECEIVER
+};
+
 struct state_machine {
     enum state current_state; 
-    enum Status stat; /*Transmitter | Receiver */
+    enum Status status;     /* TRANSMITTER | RECEIVER */
 };
 
