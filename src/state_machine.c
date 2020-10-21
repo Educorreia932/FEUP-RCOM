@@ -1,4 +1,5 @@
 #include "state_machine.h"
+#include <stdio.h>
 
 void change_state(struct state_machine machine, char field) {
     enum state current_state = machine.current_state;
@@ -47,15 +48,27 @@ void change_state(struct state_machine machine, char field) {
 
         case C_ANSWER_RCV:
         case C_CMD_RCV:
-            // BBC
+            // TODO: Check BBC
+            if (1)
+                current_state = BBC_0_RCV;
 
-            // else 
-            // current_state = START;
+            else 
+                current_state = START;
 
             break;
 
         case C_I_RCV:
             break;
+
+        case BBC_0_RCV:
+            if (field == FLAG)        
+                current_state = STOP;
+
+            else 
+                current_state = START;
+
+            break;
     }
+
 }
 

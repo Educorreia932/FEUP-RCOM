@@ -9,48 +9,45 @@
 struct applicationLayer app;
 FILE * fp;
 
-char* control_packet(enum Control type, char * filename, long int filesize) {
+char* start_packet(enum Control type, char * filename, long int filesize) {
     char* packet;
 
-    if(type == start){
-        size_t L1 = strlen(filename);
-        int L2 = ceil(filesize / 8);
-        
-        int packet_size = 3 + L1 + 2 + L2; // Number of bytes
+    size_t L1 = strlen(filename);
+    int L2 = ceil(filesize / 8);
+    
+    int packet_size = 3 + L1 + 2 + L2; // Number of bytes
 
-        packet = malloc(packet_size);
+    packet = malloc(packet_size);
 
-        packet[0] = type;
-        packet[1] = T_FILENAME;
-        packet[2] = L1;
+    packet[0] = type;
+    packet[1] = T_FILENAME;
+    packet[2] = L1;
 
-        int c;
+    int c;
 
-        for (c = 3; c < L1 + 3; c++) 
-            packet[c] = filename[c - 3];
-        
-        packet[c++] = T_FILESIZE;
-        packet[c++] = L2;
+    for (c = 3; c < L1 + 3; c++) 
+        packet[c] = filename[c - 3];
+    
+    packet[c++] = T_FILESIZE;
+    packet[c++] = L2;
 
-        for (c = 3; c < L1 + 3; c++)  {
-            int octet = (filesize >>= 8);
+    for (c = 3; c < L1 + 3; c++)  {
+        int octet = (filesize >>= 8);
 
-            packet[c] = filename[c - 3];
-        }
+        packet[c] = filename[c - 3];
     }
-
-   else {
-       packet = malloc(1);
-       packet[0] = type;
-   }
 
    return packet;
 }
 
+char* end_packet() {
+    char* packet = malloc(1);
+    packet[0] = end;    
 
+    return packet;
+}
 
-int open_file(char * filename)
-{    
+int open_file(char * filename) {    
     // Open file 
     if(app.status == TRANSMITTER) 
         fp = fopen(filename, "r"); //Open for reading
@@ -78,7 +75,7 @@ int open_file(char * filename)
 
         int filesize = st.st_size; // File size
 
-        char * packet = control_packet(start, filename, filesize);
+        char * packet = start_packet(start, filename, filesize);
 
         llwrite(app.fileDescriptor, packet, sizeof(packet));
     }
@@ -99,7 +96,7 @@ int llopen(char * port, enum Status stat) {
 
 int llclose(int fd)
 {
-    char * packet = control_packet(end, "", 0); // Check if it's necessary to fill filesize and filename
+    char * packet = end_packet(); // Check if it's necessary to fill filesize and filename
     llwrite(fd, packet, sizeof(packet));
 
     if(fclose(fp) < 0)

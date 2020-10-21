@@ -56,3 +56,5 @@ client
 server
 
 docs/
+
+StateMachine.graphml

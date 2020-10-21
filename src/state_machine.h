@@ -41,3 +41,4 @@ struct state_machine {
     enum Status status;     /* TRANSMITTER | RECEIVER */
 };
 
+void change_state(struct state_machine machine, char field);

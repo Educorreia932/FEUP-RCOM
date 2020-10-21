@@ -14,7 +14,29 @@ void atende() { // atende alarme
 	alarm_counter++;
 }
 
-int establish_connection(char * port, enum Status stat) {
+int send_supervision_frame(int fd, char a, char c) {
+	unsigned char buf[5];
+
+	buf[0] = FLAG;
+	buf[1] = a;
+	buf[2] = c;
+	buf[3] = a ^ c; // BCC
+	buf[4] = FLAG;
+
+	return write(fd, buf, 5);
+}
+
+int send_information_frame(int fd, char a, char c) {
+	unsigned char buf[5];
+
+	// TODO:
+	
+	return write(fd, buf, 5);
+}
+
+int establish_connection(char * port, enum Status status) {
+	char buf[1];
+	
     strcpy(llink.port, port);
 	llink.baudRate = BAUDRATE;
 	llink.sequenceNumber = 0;
@@ -63,34 +85,93 @@ int establish_connection(char * port, enum Status stat) {
 
 	printf("New termios structure set\n");
 
+	// Set state machine
+	struct state_machine stm;
 
-	//Set alarm handler
-	if(stat == TRANSMITTER) {
-		//Alarm
+	stm.status = status;
+	stm.current_state = START;
+
+	if (status == TRANSMITTER) {
+		// Set alarm handler
 		action.sa_handler = &atende;
 		sigemptyset (&action.sa_mask);
 		action.sa_flags = 0;
 
-		if( sigaction(SIGALRM, &action, NULL) < 0)  // Installs co-routine that attends interruption
-		{
+		// Installs co-routine that attends interruption
+		if (sigaction(SIGALRM, &action, NULL) < 0) {
 			perror("Failed to set SIGALARM handler.\n");
 			exit(1);
 		}
+
+		bool receivedUA = false;
+
+		// Tries to send Set Message
+		while (alarm_counter < llink.numTransmissions) {
+			if (flag) {
+				alarm(llink.timeout);  // Activactes 3 second alarm
+				flag = false;
+
+				int n = send_supervision_frame(fd, A_EM_CMD, C_SET); //sends SET message
+
+				if (n == -1) {
+					perror("Failed to send SET message.");
+					exit(1);
+				}
+
+				printf("Sent SET message. \n");
+			}
+
+			// Tries to receive UA message
+			if (read(fd, buf, 1) < 0) {
+				// Read was not interrupted by the alarm, so it wasn't the cause for errno
+				if (errno != EINTR) {
+					perror("Failed to read.");
+					exit(1);		
+				}
+			}
+
+			// No error occured
+			else {
+				printf("Não devia %x\n", buf[0]);
+				change_state(stm, buf[0]);  // Check if it is UA msg (state machine)
+
+				if (stm.current_state == STOP)
+					receivedUA = true;
+			}
+			
+			if (receivedUA) {
+				printf("Received UA message.\n");
+				break; // Read successfully UA msg
+			}
+		}
 	}
 
-	//Set state machine
-	struct state_machine stm;
-	
-	stm.status = stat;
-	stm.current_state = START;
+	else if (status == RECEIVER) {
+		bool receivedSet = false;
 
-	//Send SET message if transmitter 
-	//Receive SET message if receptor
+		while(!receivedSet)
+		{
+			// Tries to receive SET message
+			if (read(fd, buf, 1) < 0) {
+				perror("Failed to read.");
+				exit(1);		
+			}
 
-	
-	//Send UA message if transmitter
-	//Receive UA message if receptor
+			else {
+				change_state(stm, buf[0]);  // Check if it is SET msg (state machine)
+				printf("%u\n", stm.current_state);
+				if (stm.current_state == STOP)
+					receivedSet = true;
+			}
+		}
+		
+		int n = send_supervision_frame(fd, A_RC_RESP, C_UA); // Sends UA message
 
-    return fd;
+		if (n == -1) {
+			perror("Failed to send UA message.");
+			exit(1);
+		}
+
+		printf("Sent UA message.\n");
+	}
 }
-
