@@ -31,10 +31,5 @@ int main(int argc, char **argv) {
         exit(1);
     }
 
-    printf("Established connection\n");
-
-    // TODO: Ask app to open image and send it or receive it
-    // TODO: Receive confirmation that app finished sending/receiving
-
     return 0;
 }

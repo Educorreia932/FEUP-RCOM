@@ -1,4 +1,5 @@
 #include "link.h"
+#include <string.h>
 
 struct linkLayer llink;
 struct termios oldtio, newtio;
@@ -8,10 +9,45 @@ int fd;
 bool flag = true;
 int alarm_counter = 0;
 
-void atende() { // atende alarme
-    printf("alarme # %d\n", alarm_counter);
+void alarm_handler() { 
+    printf("Alarm # %d\n", alarm_counter);
     flag = true;
     alarm_counter++;
+}
+
+char* byte_stuffing(char* packet) {
+    int length = strlen(packet);
+    int counter = length;
+    
+    // Calculate size of data to allocate the necessary space
+    for (int c = 0; c < length; c++){
+        if (packet[c] == FLAG || packet[c] == ESCAPE)
+            counter++;
+    }
+
+    char* frame = (char*) malloc(counter);
+    int index = 0;
+
+    // Fill the frame, replacing flage and escape occurrences
+    for (int c = 0; c < length; c++) {
+        if (packet[c] == FLAG) {
+            frame[index] = ESCAPE;
+            frame[++index] = FLAG_STUFF;
+        }
+        
+        else if(packet[c] == ESCAPE) {
+            counter++;
+            frame[index] = ESCAPE;
+            frame[++index] = ESCAPE_STUFF;
+        }
+
+        else
+            frame[index] = packet[c];
+
+        index++;
+    }
+
+    return frame;
 }
 
 int send_supervision_frame(int fd, char a, char c) {
@@ -93,7 +129,7 @@ int establish_connection(char *port, enum Status status) {
 
     if (status == TRANSMITTER) {
         // Set alarm handler
-        action.sa_handler = &atende;
+        action.sa_handler = &alarm_handler;
         sigemptyset(&action.sa_mask);
         action.sa_flags = 0;
 
@@ -132,7 +168,7 @@ int establish_connection(char *port, enum Status status) {
 
             // No error occured
             else {
-                stm.current_state = change_state(stm.current_state, buf[0]); // Check if it is UA msg (state machine)
+                change_state(&stm, buf[0]); // Check if it is UA msg (state machine)
 
                 if (stm.current_state == STOP)
                     receivedUA = true;
@@ -140,9 +176,13 @@ int establish_connection(char *port, enum Status status) {
 
             if (receivedUA) {
                 printf("Received UA message.\n");
+                printf("Established connection\n");
                 break; // Read successfully UA msg
             }
         }
+
+        if (alarm_counter == llink.numTransmissions)
+            perror("Failed to establish connection.\n");
     }
 
     else if (status == RECEIVER) {
@@ -156,7 +196,7 @@ int establish_connection(char *port, enum Status status) {
             }
 
             else {
-                stm.current_state = change_state(stm.current_state, buf[0]); // Check if it is SET msg (state machine) 
+                change_state(&stm, buf[0]); // Check if it is SET msg (state machine) 
 
                 if (stm.current_state == STOP)
                     receivedSet = true;
@@ -171,5 +211,7 @@ int establish_connection(char *port, enum Status status) {
         }
 
         printf("Sent UA message.\n");
+
+        printf("Established connection\n");
     }
 }

@@ -1,46 +1,56 @@
 #include "state_machine.h"
 #include <stdio.h>
 
-int change_state(int current_state, char field) {
-    switch (current_state) {
+void change_state(struct state_machine* stm, char field) {
+    switch (stm->current_state) {
         case START:
             if (field == FLAG) 
-                return FLAG_RCV;
-
-            else
-                return START;
+                stm->current_state = FLAG_RCV;
 
             break;
 
         case FLAG_RCV:
-            if (field == A_RC_RESP || field == A_EM_CMD)
-                return A_CMD_RCV;
+            if (stm->status == RECEIVER) {
+                if (field == A_EM_CMD)
+                    stm->current_state = A_CMD_RCV;
 
-            else if (field == A_EM_RESP || field == A_RC_CMD)
-                return A_ANSWER_RCV;
+                else if (field == A_EM_RESP)
+                    stm->current_state = A_ANSWER_RCV;
 
-            else
-                return START;
+                else
+                    stm->current_state = START;
+            }
 
-            break;
+            else if (stm->status == TRANSMITTER) {
+                if (field == A_RC_CMD)
+                    stm->current_state = A_CMD_RCV;
 
-        case A_ANSWER_RCV:
-            if (field == C_RR || field == C_REJ)
-                return C_ANSWER_RCV;
+                else if (field == A_RC_RESP)
+                    stm->current_state = A_ANSWER_RCV;
 
-            else
-                return START;
+                else
+                    stm->current_state = START;
+            }
 
             break;
 
         case A_CMD_RCV:
-            if (field == C_SET || field == C_DISC || field == C_UA)
-                return C_CMD_RCV;
+            if (field == C_SET || field == C_DISC)
+                stm->current_state = C_CMD_RCV;
 
             // Include information state
 
             else
-                return START;
+                stm->current_state = START;
+
+            break;
+
+        case A_ANSWER_RCV:
+            if (field == C_RR || field == C_REJ || field == C_UA)
+                stm->current_state = C_ANSWER_RCV;
+
+            else
+                stm->current_state = START;
 
             break;
 
@@ -48,10 +58,10 @@ int change_state(int current_state, char field) {
         case C_CMD_RCV:
             // TODO: Check BBC
             if (1)
-                return BBC_0_RCV;
+                stm->current_state = BBC_0_RCV;
 
             else
-                return START;
+                stm->current_state = START;
 
             break;
 
@@ -60,10 +70,10 @@ int change_state(int current_state, char field) {
 
         case BBC_0_RCV:
             if (field == FLAG)
-                return STOP;
+                stm->current_state = STOP;
 
             else
-                return START;
+                stm->current_state = START;
 
             break;
     }

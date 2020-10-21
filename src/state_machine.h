@@ -1,15 +1,19 @@
 #define FLAG 0x7E
+#define ESCAPE 0x7D
+#define FLAG_STUFF 0x5E    // 0x7E XOR 0x20
+#define ESCAPE_STUFF 0x5D  // 0x7D XOR 0x20 
 
 #define A_EM_CMD 0x03
+#define A_EM_RESP 0x01
 #define A_RC_RESP 0x03
 #define A_RC_CMD 0x01
-#define A_EM_RESP 0x01
 
 #define C_SET 0x03
 #define C_DISC 0x0C
 #define C_UA 0x07
 #define C_RR 0x05 // Apply OR
 #define C_REJ 0x01
+
 
 #define BAUDRATE B38400
 #define TIMEOUT 3
@@ -41,4 +45,4 @@ struct state_machine {
     enum Status status; /* TRANSMITTER | RECEIVER */
 };
 
-int change_state(int current_state, char field);
+void change_state(struct state_machine* stm, char field);

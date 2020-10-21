@@ -51,9 +51,8 @@ Module.symvers
 Mkfile.old
 dkms.conf
 
-client
-
-server
+# Binaries
+main
 
 docs/
 
