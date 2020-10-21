@@ -2,4 +2,4 @@ cd ../src
 
 make clean & make
 
-./main -s "/dev/ttyS10"
+./main -s "/dev/ttyS11"
