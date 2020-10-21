@@ -8,8 +8,9 @@
 
 struct applicationLayer app;
 FILE *fp;
+struct stat st;
 
-char *start_packet(enum Control type, char *filename, long int filesize) {
+char *start_packet(char *filename, long int filesize) {
     char *packet;
 
     size_t L1 = strlen(filename);
@@ -19,7 +20,7 @@ char *start_packet(enum Control type, char *filename, long int filesize) {
 
     packet = malloc(packet_size);
 
-    packet[0] = type;
+    packet[0] = start;
     packet[1] = T_FILENAME;
     packet[2] = L1;
 
@@ -40,6 +41,19 @@ char *start_packet(enum Control type, char *filename, long int filesize) {
     return packet;
 }
 
+// Send control packets and split the file in data packets
+void send_file(char *filename) {
+    //Start packet
+    char *packet = start_packet(filename, st.st_size);
+    llwrite(app.fileDescriptor, packet, sizeof(packet));
+
+    //TODO: send .gif
+
+    //End packet
+    packet = end_packet();
+    llwrite(app.fileDescriptor, packet, sizeof(packet));
+}
+
 char *end_packet() {
     char *packet = malloc(1);
     packet[0] = end;
@@ -47,7 +61,7 @@ char *end_packet() {
     return packet;
 }
 
-int open_file(char *filename) {
+struct stat open_file(char *filename) {
     // Open file
     if (app.status == TRANSMITTER)
         fp = fopen(filename, "r"); //Open for reading
@@ -63,32 +77,23 @@ int open_file(char *filename) {
         exit(1);
     }
 
-    if (app.status == TRANSMITTER) // If transmitter, need to send Start Packet
-    {
-        struct stat st;
+    struct stat st;
 
-        if (stat(filename, &st) < 0) {
-            perror("Failed stat call.\n");
-            exit(1);
-        }
-
-        int filesize = st.st_size; // File size
-
-        char *packet = start_packet(start, filename, filesize);
-
-        llwrite(app.fileDescriptor, packet, sizeof(packet));
+    if (stat(filename, &st) < 0) {
+        perror("Failed stat call.\n");
+        exit(1);
     }
 
-    return 0;
+    return st;
 }
 
-int llopen(char *port, enum Status stat) {
-    app.status = stat;
+int llopen(char *port, enum Status status) {
+    st = open_file(FILETOTRANSFER); // Open file to send and send control packet
+
+    app.status = status;
 
     int fd = establish_connection(port, stat);
     app.fileDescriptor = fd;
-
-    open_file(FILETOTRANSFER); //Open file & send Start packet
 
     return fd;
 }

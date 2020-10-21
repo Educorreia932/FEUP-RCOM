@@ -31,4 +31,8 @@ int main(int argc, char **argv) {
         exit(1);
     }
 
+    // send file
+    llclose(fd); // TODO: Check for errors
+
+    return 0;
 }
