@@ -36,7 +36,6 @@ char* byte_stuffing(char* packet) {
         }
         
         else if(packet[c] == ESCAPE) {
-            counter++;
             frame[index] = ESCAPE;
             frame[++index] = ESCAPE_STUFF;
         }
@@ -49,6 +48,38 @@ char* byte_stuffing(char* packet) {
 
     return frame;
 }
+
+
+char * byte_destuffing(char * packet){
+    int length = strlen(packet);
+    int counter = length;
+    
+    // Calculate size of data to allocate the necessary space
+    for (int c = 0; c < length; c++){
+        if (packet[c] == ESCAPE) {
+            counter--;
+            c++;
+        }
+    }
+
+    char* frame = (char*) malloc(counter);
+    int index = 0;
+
+    // Fill the frame, replacing escaped occurrences
+    for (int c = 0; c < length; c++) {
+        if (packet[c] == ESCAPE) 
+            frame[index] = packet[++c] ^ 0x20;
+
+        else
+            frame[index] = packet[c];
+
+        index++;
+    }
+
+    return frame;
+     
+}
+
 
 int send_supervision_frame(int fd, char a, char c) {
     unsigned char buf[5];
