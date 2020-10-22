@@ -9,8 +9,6 @@ int fd;
 bool flag = true;
 int alarm_counter = 0;
 
-
-
 void alarm_handler() {
     printf("Alarm # %d\n", alarm_counter);
     flag = true;
@@ -29,12 +27,9 @@ int send_supervision_frame(int fd, char a, char c) {
     return write(fd, buf, 5);
 }
 
-
-
 //Stuffing
 
-char *byte_stuffing(char *packet) {
-    int length = strlen(packet);
+int byte_stuffing(char *packet, int length) {
     int counter = length;
 
     // Calculate size of data to allocate the necessary space
@@ -64,11 +59,12 @@ char *byte_stuffing(char *packet) {
         index++;
     }
 
-    return frame;
+    memcpy(packet, frame, counter);
+
+    return counter;
 }
 
-char *byte_destuffing(char *packet) {
-    int length = strlen(packet);
+int byte_destuffing(char *packet, int length) {
     int counter = length;
 
     // Calculate size of data to allocate the necessary space
@@ -93,68 +89,70 @@ char *byte_destuffing(char *packet) {
         index++;
     }
 
-    return frame;
-}
+    memcpy(packet, frame, counter);
 
+    return counter;
+}
 
 //I Frames
 
-char * create_information_frame(char* packet) {
-    packet = byte_stuffing(packet); // Byte-stuff packet
+int create_information_frame(char *packet, int length) {
+    int BCC_2 = ~packet[0];
 
-    unsigned char* buf = malloc(strlen(packet) + 5); //TODO: check size after suffing
-
-    buf[0] = FLAG;
-    buf[1] = A_EM_CMD;
-    buf[2] = llink.sequenceNumber; //TODO: Change N(s) place 0S000000
-    buf[3] = A_EM_CMD ^ llink.sequenceNumber; // BCC_1
-
-    int BCC_2 = packet[0];
-
-    int i;
- 
-    for (i = 4; i < strlen(packet); i++) { //strlen??
-        buf[i] = packet[i - 4];
-        
+    for (int i = 4; i < length; i++)
         BCC_2 ^= packet[i];
-    }
 
-    buf[i] = BCC_2;
-    buf[i + 1] = FLAG;
+    length = byte_stuffing(packet, length); // Byte-stuff packet
 
-    return packet;
+    unsigned char *frame = malloc(length + 6); //TODO: check size after stuffing
+
+    frame[0] = FLAG;
+    frame[1] = A_EM_CMD;
+    frame[2] = 0x40;         //TODO: Change N(s) place 0S000000
+    frame[3] = A_EM_CMD ^ 0; // BCC_1
+    
+    memcpy(frame + 4, packet, length);
+
+    frame[length + 4] = BCC_2;
+    frame[length + 5] = FLAG;
+
+    memcpy(packet, frame, length + 6);
+
+    return length + 6;
 }
 
-int write_I_frame(char * packet) //TODO: needs length in arguments??
-{
-    //Prepare frame to send
-    char * frame = create_information_frame(packet);
+int write_info_frame(int fd, char *packet, int length) {
+    // Prepare frame to send
+    length = create_information_frame(packet, length);
 
-    char buf[MAX_SIZE]; //TODO: Check size
+    char buf[1];     //TODO: Check size
     char frame_type; // RR or REJ
 
-    //Star state machine
+    // Start state machine
     struct state_machine stm;
     stm.current_state = START;
-    stm.status = TRANSMITTER;   
+    stm.status = TRANSMITTER;
 
     alarm_counter = 0;
     bool receivedRR = false;
-    int n; //Written characters
+    int n; // Written characters
 
     while (alarm_counter < llink.numTransmissions) {
         if (flag) {
             alarm(llink.timeout); // Activactes alarm
             flag = false;
 
-            n = write(fd, frame, sizeof(frame)); // Sends I Frame
+            for (int i = 0; i < length; i++) {
+                n = write(fd, packet, 1); // Sends I Frame
+                packet++;
 
-            if (n == -1) {
-                perror("Failed to send I Frame message.");
-                return -1;
+                if (n == -1) {
+                    perror("Failed to send I Frame message.");
+                    return -1;
+                }
             }
 
-            printf("Sent I Frame. \n");
+            printf("Sent information Frame. \n");
         }
 
         // Receives ACK
@@ -170,33 +168,31 @@ int write_I_frame(char * packet) //TODO: needs length in arguments??
         else {
             change_state(&stm, buf[0]); // TODO: Check if it is ACK msg (state machine)
 
-            if(stm.current_state == C_RR) //RR frame
-                frame_type = C_RR;
+            if (stm.current_state == C_RR_RCV) //RR frame
+                frame_type = C_RR_RCV;
 
-            else if (stm.current_state == C_REJ) //REJ frame
-                frame_type = C_REJ;
+            else if (stm.current_state == C_REJ_RCV) //REJ frame
+                frame_type = C_REJ_RCV;
 
-            else if (stm.current_state == STOP){ //Read frame successfuly
-                
-                if(frame_type == C_RR)  //Check frame type (RR or REJ)
+            else if (stm.current_state == STOP) { //Read frame successfuly
+                if (frame_type == C_RR_RCV)       //Check frame type (RR or REJ)
                     receivedRR = true;
-                
-                else{              //Received REJ frame. Need to resend I Frame (flag = 0).
+
+                else { //Received REJ frame. Need to resend I Frame (flag = 0).
                     flag = 0;
-                    stm.current_state = START;  //Restart state_machine
+                    stm.current_state = START; //Restart state_machine
                 }
             }
         }
-        
-        if (receivedRR) {    // Read successfully RR msg
+
+        if (receivedRR) { // Read successfully RR msg
             printf("Received RR message.\n");
             llink.sequenceNumber = !llink.sequenceNumber; // 0 or 1
             break;
         }
     }
 
-    if (alarm_counter == llink.numTransmissions)
-    {
+    if (alarm_counter == llink.numTransmissions) {
         perror("Failed to establish send Frame / Receive ACK.\n");
         return -1;
     }
@@ -204,23 +200,21 @@ int write_I_frame(char * packet) //TODO: needs length in arguments??
     return n;
 }
 
-char* receive_information_frame(int fd) {
+char *receive_info_frame(int fd) {
     // TODO: Turn this function into one with a more general purpose and use the state machine
-    char* packet = (char*) malloc(20000);
-    char* buf = malloc(20000);
+    char *packet = (char *)malloc(20000);
+    char *buf = malloc(20000);
 
-    int counter = 0;
+    int length = 0;
 
-    read(fd, buf, 20000);
+    // read(fd, buf, 20000);
 
-    buf = byte_destuffing(buf);
+    length = byte_destuffing(buf, length);
 
     printf("%s\n", buf);
 
     return buf;
 }
-
-
 
 /**
  * Opens serial port device and sets configurations.
@@ -337,8 +331,7 @@ int establish_connection(char *port, enum Status status) {
             }
         }
 
-        if (alarm_counter == llink.numTransmissions)
-        {
+        if (alarm_counter == llink.numTransmissions) {
             perror("Failed to establish connection.\n");
             exit(1);
         }

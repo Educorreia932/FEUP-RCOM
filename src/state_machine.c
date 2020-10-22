@@ -38,7 +38,8 @@ void change_state(struct state_machine* stm, char field) {
             if (field == C_SET || field == C_DISC)
                 stm->current_state = C_CMD_RCV;
 
-            // Include information state
+            else if (field == 0x40)
+                stm->current_state = C_I_RCV;
 
             else
                 stm->current_state = START;
@@ -58,7 +59,16 @@ void change_state(struct state_machine* stm, char field) {
         case C_CMD_RCV:
             // TODO: Check BBC
             if (1)
-                stm->current_state = BBC_0_RCV;
+                stm->current_state = BCC_0_RCV;
+
+            else
+                stm->current_state = START;
+
+            break;
+
+        case BCC_0_RCV:
+            if (field == FLAG)
+                stm->current_state = STOP;
 
             else
                 stm->current_state = START;
@@ -66,9 +76,25 @@ void change_state(struct state_machine* stm, char field) {
             break;
 
         case C_I_RCV:
+            // TODO: Check BCC
+            if (1)
+                stm->current_state = BCC_1_RCV;
+
+            else
+                stm->current_state = START;
+           
             break;
 
-        case BBC_0_RCV:
+        case BCC_1_RCV:
+            if (1)
+                stm->current_state = D_RCV;
+
+            else
+                stm->current_state = START;
+
+            break;
+
+        case D_RCV: // TODO: last byte will be BCC2
             if (field == FLAG)
                 stm->current_state = STOP;
 

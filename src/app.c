@@ -156,12 +156,12 @@ int llclose(int fd) {
 int llwrite(int fd, char *buffer, int length) {
     //send_information_frame(fd, A_EM_CMD, C_I, buffer, length); //TODO: Devia ser o linklayer a chamar esta funçao
 
-    return write_I_frame(buffer);
+    return write_info_frame(fd, buffer, length);
 }
 
 int llread(int fd, char *buffer) {
     sleep(1);
-    buffer = receive_information_frame(fd);
+    buffer = receive_info_frame(fd);
     fwrite(buffer, 1, 4096, fp);
 
     return 0;
