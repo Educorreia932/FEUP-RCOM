@@ -41,15 +41,14 @@ char *start_packet(char *filename, long int filesize) {
     return packet;
 }
 
-char* data_packet(char* data_field) {
+char *data_packet(char *data_field, int length) {
     char *packet;
 
     // TODO: Change later
     int L1 = 0xFF;
-    int L2 =  0xFF;
+    int L2 = 0xFF;
 
-    int data_size = sizeof(data_field);
-    int packet_size = 4 + data_size;
+    int packet_size = 4 + length;
 
     packet = malloc(packet_size);
     packet[0] = data;
@@ -59,7 +58,7 @@ char* data_packet(char* data_field) {
 
     packet += 4;
 
-    memmove(packet, data_field, data_size);
+    memmove(packet, data_field, length);
 
     return packet;
 }
@@ -71,37 +70,56 @@ char *end_packet() {
     return packet;
 }
 
-// Send control packets and split the file in data packets
-void send_file() {
-    // Start packet
-    char *packet = start_packet(app.filename, st.st_size);
-    llwrite(app.fileDescriptor, packet, sizeof(packet));
+void file_transmission() {
+    // Send control packets and split the file in data packets to send them
+    if (app.status == TRANSMITTER) {
+        // Start packet
+        char *packet = start_packet(app.filename, st.st_size);
+        llwrite(app.fileDescriptor, packet, sizeof(packet));
 
-    int num_chunks = ceil(st.st_size / CHUNK_SIZE);
+        int num_chunks = ceil(st.st_size / (double)CHUNK_SIZE);
 
-    // Data packets
-    for (int i = 0; i < num_chunks; i++) {
-        char* data_field = (char*) calloc(CHUNK_SIZE, sizeof(char));
+        // Data packets
+        for (int i = 0; i < num_chunks; i++) {
+            char *data_field = (char *) malloc(CHUNK_SIZE);
 
-        fseek(fp, 0, SEEK_CUR);
-        fread(data_field, 1, CHUNK_SIZE, fp);
+            fseek(fp, 0, SEEK_CUR);
+            size_t length = fread(data_field, 1, CHUNK_SIZE, fp);
 
-        packet = data_packet(data_field);
+            packet = data_packet(data_field, length);
+
+            llwrite(app.fileDescriptor, packet, length);
+        }
+
+        // End packet
+        packet = end_packet();
+        llwrite(app.fileDescriptor, packet, sizeof(packet));
     }
+    
+    else if (app.status == RECEIVER) {
+        bool transmission_ended = false;
 
-    //End packet
-    packet = end_packet();
-    llwrite(app.fileDescriptor, packet, sizeof(packet));
+        // Only developing sending one packete/frame at the moment
+        while (!transmission_ended) {
+
+            char* buf;
+            llread(app.fileDescriptor, buf);
+
+            transmission_ended = true;
+        }
+    }
 }
 
 struct stat open_file(char *filename) {
     // Open file
-    if (app.status == TRANSMITTER)
+    if (app.status == TRANSMITTER) {
         fp = fopen(filename, "r"); //Open for reading
+    }
 
     else {
+
         // TODO: This is only needed when using SOCAT on the same PC
-        char copy_filename[255] = "../files/pinguim_copia.gif";
+        char copy_filename[255] = "../files/nose_copia.jpg";
         fp = fopen(copy_filename, "w"); //Open for writing
     }
 
@@ -123,9 +141,9 @@ struct stat open_file(char *filename) {
 }
 
 int llopen(char *port, enum Status status) {
-    st = open_file(FILETOTRANSFER); // Open file to send and send control packet
-
     app.status = status;
+    
+    st = open_file(FILETOTRANSFER); // Open file to send and send control packet
 
     int fd = establish_connection(port, status);
     app.fileDescriptor = fd;
@@ -143,14 +161,15 @@ int llclose(int fd) {
 }
 
 int llwrite(int fd, char *buffer, int length) {
-    //TODO: preparar pacote
-    //TODO: mandar pacote
+    send_information_frame(fd, A_EM_CMD, C_I, buffer, length);
 
     return 0;
 }
 
 int llread(int fd, char *buffer) {
-    //TODO: receber pacote
-    //TODO: Intrepretar pacote
+    sleep(1);
+    buffer = receive_information_frame(fd);
+    fwrite(buffer, 1, 4096, fp);
+
     return 0;
 }

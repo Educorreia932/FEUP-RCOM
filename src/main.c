@@ -23,16 +23,16 @@ int main(int argc, char **argv) {
     if (strcmp("-c", argv[1]) == 0)
         fd = llopen(argv[2], TRANSMITTER);
 
-    else if (strcmp("-s", argv[1]) == 0)
+    else if (strcmp("-s", argv[1]) == 0) {
         fd = llopen(argv[2], RECEIVER);
+    }
 
     if (fd < 0) {
         perror("Failed to establish connection.\n");
         exit(1);
     }
 
-    // send file
-    send_file();
+    file_transmission();
 
     llclose(fd); // TODO: Check for errors
 

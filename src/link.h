@@ -27,3 +27,5 @@ struct linkLayer {
 };
 
 int establish_connection(char * port, enum Status stat);
+int send_information_frame(int fd, char a, char c, char* packet, int length);
+char* receive_information_frame(int fd);

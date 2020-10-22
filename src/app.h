@@ -1,6 +1,6 @@
 #include "link.h"
 
-#define FILETOTRANSFER "../files/pinguim.gif"
+#define FILETOTRANSFER "../files/nose.jpg"
 
 // Control Packet
 #define T_FILENAME 0x00 // T1
@@ -20,9 +20,9 @@ struct applicationLayer {
     char* filename;
 };
 
-void send_file();
+void file_transmission();
 
-int llopen(char *port, enum Status stat); //TODO: porta devia ser int ???
+int llopen(char *port, enum Status status); //TODO: porta devia ser int ???
 int llread(int fd, char *buffer);
 int llwrite(int fd, char *buffer, int length);
 int llclose(int fd);

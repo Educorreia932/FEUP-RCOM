@@ -9,23 +9,23 @@ int fd;
 bool flag = true;
 int alarm_counter = 0;
 
-void alarm_handler() { 
+void alarm_handler() {
     printf("Alarm # %d\n", alarm_counter);
     flag = true;
     alarm_counter++;
 }
 
-char* byte_stuffing(char* packet) {
+char *byte_stuffing(char *packet) {
     int length = strlen(packet);
     int counter = length;
-    
+
     // Calculate size of data to allocate the necessary space
-    for (int c = 0; c < length; c++){
+    for (int c = 0; c < length; c++) {
         if (packet[c] == FLAG || packet[c] == ESCAPE)
             counter++;
     }
 
-    char* frame = (char*) malloc(counter);
+    char *frame = (char *)malloc(counter);
     int index = 0;
 
     // Fill the frame, replacing flage and escape occurrences
@@ -34,8 +34,8 @@ char* byte_stuffing(char* packet) {
             frame[index] = ESCAPE;
             frame[++index] = FLAG_STUFF;
         }
-        
-        else if(packet[c] == ESCAPE) {
+
+        else if (packet[c] == ESCAPE) {
             frame[index] = ESCAPE;
             frame[++index] = ESCAPE_STUFF;
         }
@@ -49,25 +49,24 @@ char* byte_stuffing(char* packet) {
     return frame;
 }
 
-
-char * byte_destuffing(char * packet){
+char *byte_destuffing(char *packet) {
     int length = strlen(packet);
     int counter = length;
-    
+
     // Calculate size of data to allocate the necessary space
-    for (int c = 0; c < length; c++){
+    for (int c = 0; c < length; c++) {
         if (packet[c] == ESCAPE) {
             counter--;
             c++;
         }
     }
 
-    char* frame = (char*) malloc(counter);
+    char *frame = (char *)malloc(counter);
     int index = 0;
 
     // Fill the frame, replacing escaped occurrences
     for (int c = 0; c < length; c++) {
-        if (packet[c] == ESCAPE) 
+        if (packet[c] == ESCAPE)
             frame[index] = packet[++c] ^ 0x20;
 
         else
@@ -77,9 +76,7 @@ char * byte_destuffing(char * packet){
     }
 
     return frame;
-     
 }
-
 
 int send_supervision_frame(int fd, char a, char c) {
     unsigned char buf[5];
@@ -93,12 +90,50 @@ int send_supervision_frame(int fd, char a, char c) {
     return write(fd, buf, 5);
 }
 
-int send_information_frame(int fd, char a, char c) {
-    unsigned char buf[5];
+int send_information_frame(int fd, char a, char c, char* packet, int length) {
+    printf("Ui\n");
+    packet = byte_stuffing(packet); // Byte-stuff packet
 
-    // TODO:
+    unsigned char* buf = malloc(length + 5);
 
-    return write(fd, buf, 5);
+    buf[0] = FLAG;
+    buf[1] = a;
+    buf[2] = c;
+    buf[3] = a ^ c; // BCC_1
+
+    int BCC_2 = ~packet[0];
+
+    int i;
+
+    for (i = 4; i < length; i++) {
+        buf[i] = packet[i - 4];
+        
+        BCC_2 ^= packet[i];
+    }
+
+    for (int j = 0; j < 1; j++)
+        printf("%x\n", packet[j]);
+
+    buf[i] = BCC_2;
+    buf[i + 1] = FLAG;
+
+    return write(fd, buf, length + 5); // Write to serial port
+}
+
+char* receive_information_frame(int fd) {
+    // TODO: Turn this function into one with a more general purpose and use the state machine
+    char* packet = (char*) malloc(20000);
+    char* buf = malloc(20000);
+
+    int counter = 0;
+
+    read(fd, buf, 20000);
+
+    buf = byte_destuffing(buf);
+
+    printf("%s\n", buf);
+
+    return buf;
 }
 
 int establish_connection(char *port, enum Status status) {
@@ -227,12 +262,14 @@ int establish_connection(char *port, enum Status status) {
             }
 
             else {
-                change_state(&stm, buf[0]); // Check if it is SET msg (state machine) 
+                change_state(&stm, buf[0]); // Check if it is SET msg (state machine)
 
                 if (stm.current_state == STOP)
                     receivedSet = true;
             }
         }
+
+        printf("Received SET message.\n");
 
         int n = send_supervision_frame(fd, A_RC_RESP, C_UA); // Sends UA message
 
@@ -245,4 +282,6 @@ int establish_connection(char *port, enum Status status) {
 
         printf("Established connection\n");
     }
+
+    return fd;
 }

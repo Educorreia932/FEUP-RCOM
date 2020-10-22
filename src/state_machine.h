@@ -13,7 +13,7 @@
 #define C_UA 0x07
 #define C_RR 0x05 // Apply OR
 #define C_REJ 0x01
-
+#define C_I 0x40 // Change to include number of sequence
 
 #define BAUDRATE B38400
 #define TIMEOUT 3
