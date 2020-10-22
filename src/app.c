@@ -41,17 +41,27 @@ char *start_packet(char *filename, long int filesize) {
     return packet;
 }
 
-// Send control packets and split the file in data packets
-void send_file(char *filename) {
-    //Start packet
-    char *packet = start_packet(filename, st.st_size);
-    llwrite(app.fileDescriptor, packet, sizeof(packet));
+char* data_packet(char* data_field) {
+    char *packet;
 
-    //TODO: send .gif
+    // TODO: Change later
+    int L1 = 0xFF;
+    int L2 =  0xFF;
 
-    //End packet
-    packet = end_packet();
-    llwrite(app.fileDescriptor, packet, sizeof(packet));
+    int data_size = sizeof(data_field);
+    int packet_size = 4 + data_size;
+
+    packet = malloc(packet_size);
+    packet[0] = data;
+    packet[1] = 0; // TODO: Change later
+    packet[2] = L1;
+    packet[3] = L2;
+
+    packet += 4;
+
+    memmove(packet, data_field, data_size);
+
+    return packet;
 }
 
 char *end_packet() {
@@ -59,6 +69,29 @@ char *end_packet() {
     packet[0] = end;
 
     return packet;
+}
+
+// Send control packets and split the file in data packets
+void send_file() {
+    // Start packet
+    char *packet = start_packet(app.filename, st.st_size);
+    llwrite(app.fileDescriptor, packet, sizeof(packet));
+
+    int num_chunks = ceil(st.st_size / CHUNK_SIZE);
+
+    // Data packets
+    for (int i = 0; i < num_chunks; i++) {
+        char* data_field = (char*) calloc(CHUNK_SIZE, sizeof(char));
+
+        fseek(fp, 0, SEEK_CUR);
+        fread(data_field, 1, CHUNK_SIZE, fp);
+
+        packet = data_packet(data_field);
+    }
+
+    //End packet
+    packet = end_packet();
+    llwrite(app.fileDescriptor, packet, sizeof(packet));
 }
 
 struct stat open_file(char *filename) {
@@ -84,6 +117,8 @@ struct stat open_file(char *filename) {
         exit(1);
     }
 
+    app.filename = filename;
+
     return st;
 }
 
@@ -92,16 +127,13 @@ int llopen(char *port, enum Status status) {
 
     app.status = status;
 
-    int fd = establish_connection(port, stat);
+    int fd = establish_connection(port, status);
     app.fileDescriptor = fd;
 
     return fd;
 }
 
 int llclose(int fd) {
-    char *packet = end_packet(); // Check if it's necessary to fill filesize and filename
-    llwrite(fd, packet, sizeof(packet));
-
     if (fclose(fp) < 0) {
         perror("Failed to close file.\n");
         exit(1);
