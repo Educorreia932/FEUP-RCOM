@@ -28,6 +28,8 @@ enum state {
     C_ANSWER_RCV,
     C_CMD_RCV,
     C_I_RCV,
+    C_RR,
+    C_REJ,
     BBC_0_RCV,
     BBC_1_RCV,
     BBC_2_RCV,

@@ -9,11 +9,29 @@ int fd;
 bool flag = true;
 int alarm_counter = 0;
 
+
+
 void alarm_handler() {
     printf("Alarm # %d\n", alarm_counter);
     flag = true;
     alarm_counter++;
 }
+
+int send_supervision_frame(int fd, char a, char c) {
+    unsigned char buf[5];
+
+    buf[0] = FLAG;
+    buf[1] = a;
+    buf[2] = c;
+    buf[3] = a ^ c; // BCC
+    buf[4] = FLAG;
+
+    return write(fd, buf, 5);
+}
+
+
+
+//Stuffing
 
 char *byte_stuffing(char *packet) {
     int length = strlen(packet);
@@ -78,46 +96,112 @@ char *byte_destuffing(char *packet) {
     return frame;
 }
 
-int send_supervision_frame(int fd, char a, char c) {
-    unsigned char buf[5];
 
-    buf[0] = FLAG;
-    buf[1] = a;
-    buf[2] = c;
-    buf[3] = a ^ c; // BCC
-    buf[4] = FLAG;
+//I Frames
 
-    return write(fd, buf, 5);
-}
-
-int send_information_frame(int fd, char a, char c, char* packet, int length) {
-    printf("Ui\n");
+char * create_information_frame(char* packet) {
     packet = byte_stuffing(packet); // Byte-stuff packet
 
-    unsigned char* buf = malloc(length + 5);
+    unsigned char* buf = malloc(strlen(packet) + 5); //TODO: check size after suffing
 
     buf[0] = FLAG;
-    buf[1] = a;
-    buf[2] = c;
-    buf[3] = a ^ c; // BCC_1
+    buf[1] = A_EM_CMD;
+    buf[2] = llink.sequenceNumber; //TODO: Change N(s) place 0S000000
+    buf[3] = A_EM_CMD ^ llink.sequenceNumber; // BCC_1
 
-    int BCC_2 = ~packet[0];
+    int BCC_2 = packet[0];
 
     int i;
-
-    for (i = 4; i < length; i++) {
+ 
+    for (i = 4; i < strlen(packet); i++) { //strlen??
         buf[i] = packet[i - 4];
         
         BCC_2 ^= packet[i];
     }
 
-    for (int j = 0; j < 1; j++)
-        printf("%x\n", packet[j]);
-
     buf[i] = BCC_2;
     buf[i + 1] = FLAG;
 
-    return write(fd, buf, length + 5); // Write to serial port
+    return packet;
+}
+
+int write_I_frame(char * packet) //TODO: needs length in arguments??
+{
+    //Prepare frame to send
+    char * frame = create_information_frame(packet);
+
+    char buf[MAX_SIZE]; //TODO: Check size
+    char frame_type; // RR or REJ
+
+    //Star state machine
+    struct state_machine stm;
+    stm.current_state = START;
+    stm.status = TRANSMITTER;   
+
+    alarm_counter = 0;
+    bool receivedRR = false;
+    int n; //Written characters
+
+    while (alarm_counter < llink.numTransmissions) {
+        if (flag) {
+            alarm(llink.timeout); // Activactes alarm
+            flag = false;
+
+            n = write(fd, frame, sizeof(frame)); // Sends I Frame
+
+            if (n == -1) {
+                perror("Failed to send I Frame message.");
+                return -1;
+            }
+
+            printf("Sent I Frame. \n");
+        }
+
+        // Receives ACK
+        if (read(fd, buf, 1) < 0) {
+            // Read was not interrupted by the alarm, so it wasn't the cause for errno
+            if (errno != EINTR) {
+                perror("Failed to read.");
+                return -1;
+            }
+        }
+
+        // No error occured
+        else {
+            change_state(&stm, buf[0]); // TODO: Check if it is ACK msg (state machine)
+
+            if(stm.current_state == C_RR) //RR frame
+                frame_type = C_RR;
+
+            else if (stm.current_state == C_REJ) //REJ frame
+                frame_type = C_REJ;
+
+            else if (stm.current_state == STOP){ //Read frame successfuly
+                
+                if(frame_type == C_RR)  //Check frame type (RR or REJ)
+                    receivedRR = true;
+                
+                else{              //Received REJ frame. Need to resend I Frame (flag = 0).
+                    flag = 0;
+                    stm.current_state = START;  //Restart state_machine
+                }
+            }
+        }
+        
+        if (receivedRR) {    // Read successfully RR msg
+            printf("Received RR message.\n");
+            llink.sequenceNumber = !llink.sequenceNumber; // 0 or 1
+            break;
+        }
+    }
+
+    if (alarm_counter == llink.numTransmissions)
+    {
+        perror("Failed to establish send Frame / Receive ACK.\n");
+        return -1;
+    }
+
+    return n;
 }
 
 char* receive_information_frame(int fd) {
@@ -136,6 +220,12 @@ char* receive_information_frame(int fd) {
     return buf;
 }
 
+
+
+/**
+ * Opens serial port device and sets configurations.
+ * Sends SET & UA frames.
+ */
 int establish_connection(char *port, enum Status status) {
     strcpy(llink.port, port);
     llink.baudRate = BAUDRATE;
@@ -248,7 +338,11 @@ int establish_connection(char *port, enum Status status) {
         }
 
         if (alarm_counter == llink.numTransmissions)
+        {
             perror("Failed to establish connection.\n");
+            exit(1);
+        }
+
     }
 
     else if (status == RECEIVER) {

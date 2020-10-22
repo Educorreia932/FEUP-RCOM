@@ -10,17 +10,17 @@ struct applicationLayer app;
 FILE *fp;
 struct stat st;
 
-char *start_packet(char *filename, long int filesize) {
+char *start_end_packet(enum Control status, char *filename, long int filesize) {
     char *packet;
 
     size_t L1 = strlen(filename);
     int L2 = ceil(filesize / 8);
 
-    int packet_size = 3 + L1 + 2 + L2; // Number of bytes
+    int packet_size = 3 + L1 + 2 + L2; // Number of bytes needed for packet
 
     packet = malloc(packet_size);
 
-    packet[0] = start;
+    packet[0] = status;
     packet[1] = T_FILENAME;
     packet[2] = L1;
 
@@ -63,19 +63,12 @@ char *data_packet(char *data_field, int length) {
     return packet;
 }
 
-char *end_packet() {
-    char *packet = malloc(1);
-    packet[0] = end;
-
-    return packet;
-}
-
 void file_transmission() {
     // Send control packets and split the file in data packets to send them
     if (app.status == TRANSMITTER) {
         // Start packet
-        char *packet = start_packet(app.filename, st.st_size);
-        llwrite(app.fileDescriptor, packet, sizeof(packet));
+        char *packet = start_end_packet(start, app.filename, st.st_size);
+        llwrite(app.fileDescriptor, packet, sizeof(packet)); //Mandar junto com as outras ?????????
 
         int num_chunks = ceil(st.st_size / (double)CHUNK_SIZE);
 
@@ -92,20 +85,21 @@ void file_transmission() {
         }
 
         // End packet
-        packet = end_packet();
+        packet = start_end_packet(end, app.filename, st.st_size);
         llwrite(app.fileDescriptor, packet, sizeof(packet));
     }
     
-    else if (app.status == RECEIVER) {
+    else if (app.status == RECEIVER) { //TODO: separate function?? 
         bool transmission_ended = false;
 
-        // Only developing sending one packete/frame at the moment
         while (!transmission_ended) {
 
             char* buf;
             llread(app.fileDescriptor, buf);
 
-            transmission_ended = true;
+            //TODO: check if end packet arrived  
+
+            transmission_ended = true; //TODO: if receive End packet 
         }
     }
 }
@@ -117,9 +111,8 @@ struct stat open_file(char *filename) {
     }
 
     else {
-
         // TODO: This is only needed when using SOCAT on the same PC
-        char copy_filename[255] = "../files/nose_copia.jpg";
+        char copy_filename[255] = "../files/pinguim_copia.gif";
         fp = fopen(copy_filename, "w"); //Open for writing
     }
 
@@ -143,10 +136,10 @@ struct stat open_file(char *filename) {
 int llopen(char *port, enum Status status) {
     app.status = status;
     
-    st = open_file(FILETOTRANSFER); // Open file to send and send control packet
-
     int fd = establish_connection(port, status);
     app.fileDescriptor = fd;
+
+    st = open_file(FILETOTRANSFER); // Open file to send and send control packet
 
     return fd;
 }
@@ -161,9 +154,9 @@ int llclose(int fd) {
 }
 
 int llwrite(int fd, char *buffer, int length) {
-    send_information_frame(fd, A_EM_CMD, C_I, buffer, length);
+    //send_information_frame(fd, A_EM_CMD, C_I, buffer, length); //TODO: Devia ser o linklayer a chamar esta funçao
 
-    return 0;
+    return write_I_frame(buffer);
 }
 
 int llread(int fd, char *buffer) {
