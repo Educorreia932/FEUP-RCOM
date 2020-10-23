@@ -15,7 +15,7 @@ void alarm_handler() {
     alarm_counter++;
 }
 
-int send_supervision_frame(int fd, char a, char c) {
+int write_supervision_frame(int fd, char a, char c) {
     unsigned char buf[5];
 
     buf[0] = FLAG;
@@ -97,23 +97,23 @@ int byte_destuffing(char *packet, int length) {
 //I Frames
 
 int create_information_frame(char *packet, int length) {
-    int BCC_2 = ~packet[0];
+    char BCC_2 = ~packet[0];
 
     for (int i = 4; i < length; i++)
         BCC_2 ^= packet[i];
 
     length = byte_stuffing(packet, length); // Byte-stuff packet
 
-    unsigned char *frame = malloc(length + 6); //TODO: check size after stuffing
+    char *frame = malloc(length + 6); //TODO: check size after stuffing, cant' exceed MAX_SIZE 
 
     frame[0] = FLAG;
     frame[1] = A_EM_CMD;
     frame[2] = 0x40;         //TODO: Change N(s) place 0S000000
-    frame[3] = A_EM_CMD ^ 0; // BCC_1
+    frame[3] = A_EM_CMD ^ 0x40; // BCC_1
     
     memcpy(frame + 4, packet, length);
 
-    frame[length + 4] = BCC_2;
+    // frame[length + 4] = BCC_2; 
     frame[length + 5] = FLAG;
 
     memcpy(packet, frame, length + 6);
@@ -134,9 +134,10 @@ int write_info_frame(int fd, char *packet, int length) {
     stm.status = TRANSMITTER;
 
     alarm_counter = 0;
+    flag = true;
     bool receivedRR = false;
     int n; // Written characters
-
+    
     while (alarm_counter < llink.numTransmissions) {
         if (flag) {
             alarm(llink.timeout); // Activactes alarm
@@ -144,15 +145,17 @@ int write_info_frame(int fd, char *packet, int length) {
 
             for (int i = 0; i < length; i++) {
                 n = write(fd, packet, 1); // Sends I Frame
+                printf("Written: %x\n", packet[0]);
+
                 packet++;
 
                 if (n == -1) {
-                    perror("Failed to send I Frame message.");
+                    perror("Failed to send information Frame message.");
                     return -1;
                 }
             }
 
-            printf("Sent information Frame. \n");
+            printf("Sent information frame. \n");
         }
 
         // Receives ACK
@@ -166,23 +169,26 @@ int write_info_frame(int fd, char *packet, int length) {
 
         // No error occured
         else {
-            change_state(&stm, buf[0]); // TODO: Check if it is ACK msg (state machine)
+            // if (stm.current_state == C_RR_RCV) //RR frame
+            //     frame_type = C_RR_RCV;
 
-            if (stm.current_state == C_RR_RCV) //RR frame
-                frame_type = C_RR_RCV;
+            // else if (stm.current_state == C_REJ_RCV) //REJ frame
+            //     frame_type = C_REJ_RCV;
 
-            else if (stm.current_state == C_REJ_RCV) //REJ frame
-                frame_type = C_REJ_RCV;
+            // else if (stm.current_state == STOP) { //Read frame successfuly
+            //     if (frame_type == C_RR_RCV)       //Check frame type (RR or REJ)
+            //         receivedRR = true;
 
-            else if (stm.current_state == STOP) { //Read frame successfuly
-                if (frame_type == C_RR_RCV)       //Check frame type (RR or REJ)
-                    receivedRR = true;
+            //     else { //Received REJ frame. Need to resend I Frame (flag = 0).
+            //         flag = 0;
+            //         stm.current_state = START; //Restart state_machine
+            //     }
+            // }
 
-                else { //Received REJ frame. Need to resend I Frame (flag = 0).
-                    flag = 0;
-                    stm.current_state = START; //Restart state_machine
-                }
-            }
+            change_state(&stm, *buf); // Check if it is SET msg (state machine)
+
+            if (stm.current_state == STOP)
+                receivedRR = true;
         }
 
         if (receivedRR) { // Read successfully RR msg
@@ -190,7 +196,9 @@ int write_info_frame(int fd, char *packet, int length) {
             llink.sequenceNumber = !llink.sequenceNumber; // 0 or 1
             break;
         }
+        
     }
+
 
     if (alarm_counter == llink.numTransmissions) {
         perror("Failed to establish send Frame / Receive ACK.\n");
@@ -200,20 +208,52 @@ int write_info_frame(int fd, char *packet, int length) {
     return n;
 }
 
-char *receive_info_frame(int fd) {
-    // TODO: Turn this function into one with a more general purpose and use the state machine
-    char *packet = (char *)malloc(20000);
-    char *buf = malloc(20000);
+int read_info_frame(int fd, char * data_field) {
+    int counter = 0;
+    char* buf = (char*) malloc(1);
 
-    int length = 0;
+    bool received_info = false;
 
-    // read(fd, buf, 20000);
+    struct state_machine stm;
 
-    length = byte_destuffing(buf, length);
+    stm.status = RECEIVER;
+    stm.current_state = START;
 
-    printf("%s\n", buf);
+    while (!received_info) {
+        if (read(fd, buf, 1) < 0) {
+            perror("Failed to read.");
+            exit(1);
+        }
 
-    return buf;
+        else {
+            printf("%x\n", *buf);
+            if (stm.current_state == START)
+                counter = 0;
+
+            change_state(&stm, *buf); // Check if it is SET msg (state machine)
+
+            if (stm.current_state == D_RCV) {
+                data_field[counter] = *buf;
+                counter++;
+            }
+
+            if (stm.current_state == STOP)
+                received_info = true;
+        }
+    }
+
+    int n = write_supervision_frame(fd, A_RC_RESP, C_RR);
+    
+    if(n < 0){
+        perror("Failed to send ACK message.");
+        exit(1);
+    }
+
+    printf("Sent ACK message.\n");
+    
+    int length = byte_destuffing(data_field, counter);
+
+    return length;
 }
 
 /**
@@ -291,13 +331,13 @@ int establish_connection(char *port, enum Status status) {
 
         bool receivedUA = false;
 
-        // Tries to send Set Message
+        // Tries to send SET Message
         while (alarm_counter < llink.numTransmissions) {
             if (flag) {
                 alarm(llink.timeout); // Activactes alarm
                 flag = false;
 
-                int n = send_supervision_frame(fd, A_EM_CMD, C_SET); // Sends SET message
+                int n = write_supervision_frame(fd, A_EM_CMD, C_SET); // Sends SET message
 
                 if (n == -1) {
                     perror("Failed to send SET message.");
@@ -358,7 +398,7 @@ int establish_connection(char *port, enum Status status) {
 
         printf("Received SET message.\n");
 
-        int n = send_supervision_frame(fd, A_RC_RESP, C_UA); // Sends UA message
+        int n = write_supervision_frame(fd, A_RC_RESP, C_UA); // Sends UA message
 
         if (n == -1) {
             perror("Failed to send UA message.");

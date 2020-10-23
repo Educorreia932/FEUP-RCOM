@@ -98,9 +98,6 @@ void change_state(struct state_machine* stm, char field) {
             if (field == FLAG)
                 stm->current_state = STOP;
 
-            else
-                stm->current_state = START;
-
             break;
     }
 }

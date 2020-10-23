@@ -10,15 +10,14 @@ struct applicationLayer app;
 FILE *fp;
 struct stat st;
 
-char *start_end_packet(enum Control status, char *filename, long int filesize) {
-    char *packet;
-
+int control_packet(enum Control status, char *filename, long int filesize, char* packet) {
     size_t L1 = strlen(filename);
-    int L2 = ceil(filesize / 8);
+    // int L2 = ceil(filesize / 8); // TODO:
+    int L2 = 1;
 
     int packet_size = 3 + L1 + 2 + L2; // Number of bytes needed for packet
 
-    packet = malloc(packet_size);
+    realloc(packet, packet_size);
 
     packet[0] = status;
     packet[1] = T_FILENAME;
@@ -29,26 +28,19 @@ char *start_end_packet(enum Control status, char *filename, long int filesize) {
     for (c = 3; c < L1 + 3; c++)
         packet[c] = filename[c - 3];
 
-    packet[c++] = T_FILESIZE;
-    packet[c++] = L2;
+    packet[++c] = T_FILESIZE;
+    packet[++c] = L2;
 
-    for (c = 3; c < L1 + 3; c++) {
-        int octet = (filesize >>= 8);
-
-        packet[c] = filename[c - 3];
-    }
-
-    return packet;
+    return packet_size;
 }
 
-char *data_packet(char *data_field, int length) {
+int data_packet(char *data_field, int packet_size) {
     char *packet;
 
-    // TODO: Change later
-    int L1 = 0xFF;
-    int L2 = 0xFF;
+    int L1 = (packet_size & 0xFF00) >> 8;
+    int L2 = packet_size & 0xFF;
 
-    int packet_size = 4 + length;
+    int length = 4 + packet_size;
 
     packet = malloc(packet_size);
     packet[0] = data;
@@ -56,19 +48,25 @@ char *data_packet(char *data_field, int length) {
     packet[2] = L1;
     packet[3] = L2;
 
-    packet += 4;
+    memcpy(packet + 4, data_field, packet_size);
+    memcpy(data_field, packet, length);
 
-    memmove(packet, data_field, length);
-
-    return packet;
+    return length;
 }
 
 void file_transmission() {
+    // TODO: Move open_file() to here
     // Send control packets and split the file in data packets to send them
     if (app.status == TRANSMITTER) {
         // Start packet
-        char *packet = start_end_packet(start, app.filename, st.st_size);
-        llwrite(app.fileDescriptor, packet, sizeof(packet)); //Mandar junto com as outras ?????????
+        char* packet = malloc(1);
+        int length = control_packet(start, app.filename, st.st_size, packet);
+        int n = llwrite(app.fileDescriptor, packet, length);
+        
+        if(n < 0){
+            perror("Failed to send start packet.\n");
+            exit(1);
+        }
 
         int num_chunks = ceil(st.st_size / (double)CHUNK_SIZE);
 
@@ -79,27 +77,51 @@ void file_transmission() {
             fseek(fp, 0, SEEK_CUR);
             size_t length = fread(data_field, 1, CHUNK_SIZE, fp);
 
-            packet = data_packet(data_field, length);
+            int packet_size = data_packet(data_field, length);
 
-            llwrite(app.fileDescriptor, packet, length);
+            n = llwrite(app.fileDescriptor, data_field, packet_size);
+
+            if(n < 0){
+                perror("Failed to send data packet.\n");
+                exit(1);
+            }
         }
 
         // End packet
-        packet = start_end_packet(end, app.filename, st.st_size);
-        llwrite(app.fileDescriptor, packet, sizeof(packet));
+        int packet_size = control_packet(end, app.filename, st.st_size, packet);
+        n = llwrite(app.fileDescriptor, packet, packet_size);
+        
+        if(n < 0){
+            perror("Failed to send end packet.\n");
+            exit(1);
+        }
     }
     
     else if (app.status == RECEIVER) { //TODO: separate function?? 
         bool transmission_ended = false;
+        int L1, L2, L;
 
         while (!transmission_ended) {
+            char* buffer = (char*) malloc(MAX_SIZE);
+            int length = llread(app.fileDescriptor, buffer);
 
-            char* buf;
-            llread(app.fileDescriptor, buf);
+            switch (buffer[0]) {
+                case start:
+                    printf("É para aqui para baixo\n");
+                    break;
 
-            //TODO: check if end packet arrived  
+                case data:
+                    L1 = buffer[3];
+                    L2 = buffer[2];
+                    L = 256 * L2 + L1;
 
-            transmission_ended = true; //TODO: if receive End packet 
+                    fwrite(buffer + 4, 1, L, fp);
+                    break;
+
+                case end:
+                    transmission_ended = true; 
+                    break;
+            }
         }
     }
 }
@@ -154,15 +176,11 @@ int llclose(int fd) {
 }
 
 int llwrite(int fd, char *buffer, int length) {
-    //send_information_frame(fd, A_EM_CMD, C_I, buffer, length); //TODO: Devia ser o linklayer a chamar esta funçao
-
     return write_info_frame(fd, buffer, length);
 }
 
 int llread(int fd, char *buffer) {
-    sleep(1);
-    buffer = receive_info_frame(fd);
-    fwrite(buffer, 1, 4096, fp);
+    int length = read_info_frame(fd, buffer);
 
-    return 0;
+    return length;
 }

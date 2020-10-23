@@ -15,10 +15,7 @@
 #define C_REJ 0x01
 #define C_I 0x40 // Change to include number of sequence
 
-#define BAUDRATE B38400
-#define TIMEOUT 3
-#define NUM_TRANSMITIONS 3
-#define MAX_SIZE 255
+#define MAX_SIZE 65343
 
 enum state {
     START,
