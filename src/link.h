@@ -15,7 +15,7 @@
 #define BAUDRATE B38400
 #define TIMEOUT 20
 #define NUM_TRANSMITIONS 3
-
+#define SEQUENCE_MASK 0x40
 
 struct linkLayer {
     char port[20];                 /* Dispositivo /dev/ttySx, x = 0, 1 */

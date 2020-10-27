@@ -27,7 +27,7 @@ int write_supervision_frame(int fd, char a, char c) {
     return write(fd, buf, 5);
 }
 
-//Stuffing
+// Stuffing
 
 int byte_stuffing(char *packet, int length) {
     int counter = length;
@@ -94,7 +94,7 @@ int byte_destuffing(char *packet, int length) {
     return counter;
 }
 
-//I Frames
+// Information Frames
 
 int create_information_frame(char *packet, int length) {
     char BCC_2 = ~packet[0];
@@ -104,16 +104,16 @@ int create_information_frame(char *packet, int length) {
 
     length = byte_stuffing(packet, length); // Byte-stuff packet
 
-    char *frame = malloc(length + 6); //TODO: check size after stuffing, cant' exceed MAX_SIZE 
+    char *frame = malloc(length + 6); //TODO: check size after stuffing, cant' exceed MAX_SIZE
 
     frame[0] = FLAG;
     frame[1] = A_EM_CMD;
-    frame[2] = 0x40;         //TODO: Change N(s) place 0S000000
-    frame[3] = A_EM_CMD ^ 0x40; // BCC_1
-    
+    frame[2] = llink.sequenceNumber & SEQUENCE_MASK; // N(s) place 0S000000
+    frame[3] = A_EM_CMD ^ frame[2];      // BCC_1
+
     memcpy(frame + 4, packet, length);
 
-    // frame[length + 4] = BCC_2; 
+    // frame[length + 4] = BCC_2;
     frame[length + 5] = FLAG;
 
     memcpy(packet, frame, length + 6);
@@ -137,7 +137,7 @@ int write_info_frame(int fd, char *packet, int length) {
     flag = true;
     bool receivedRR = false;
     int n; // Written characters
-    
+
     while (alarm_counter < llink.numTransmissions) {
         if (flag) {
             alarm(llink.timeout); // Activactes alarm
@@ -145,7 +145,6 @@ int write_info_frame(int fd, char *packet, int length) {
 
             for (int i = 0; i < length; i++) {
                 n = write(fd, packet, 1); // Sends I Frame
-                printf("Written: %x\n", packet[0]);
 
                 packet++;
 
@@ -158,7 +157,6 @@ int write_info_frame(int fd, char *packet, int length) {
             printf("Sent information frame. \n");
         }
 
-        // Receives ACK
         if (read(fd, buf, 1) < 0) {
             // Read was not interrupted by the alarm, so it wasn't the cause for errno
             if (errno != EINTR) {
@@ -167,7 +165,7 @@ int write_info_frame(int fd, char *packet, int length) {
             }
         }
 
-        // No error occured
+        // No error occurred
         else {
             // if (stm.current_state == C_RR_RCV) //RR frame
             //     frame_type = C_RR_RCV;
@@ -187,18 +185,13 @@ int write_info_frame(int fd, char *packet, int length) {
 
             change_state(&stm, *buf); // Check if it is SET msg (state machine)
 
-            if (stm.current_state == STOP)
-                receivedRR = true;
+            if (stm.current_state == STOP) {
+                printf("Received RR message.\n");
+                llink.sequenceNumber = ~llink.sequenceNumber; // 0 or 1
+                break;
+            }
         }
-
-        if (receivedRR) { // Read successfully RR msg
-            printf("Received RR message.\n");
-            llink.sequenceNumber = !llink.sequenceNumber; // 0 or 1
-            break;
-        }
-        
     }
-
 
     if (alarm_counter == llink.numTransmissions) {
         perror("Failed to establish send Frame / Receive ACK.\n");
@@ -208,9 +201,9 @@ int write_info_frame(int fd, char *packet, int length) {
     return n;
 }
 
-int read_info_frame(int fd, char * data_field) {
+int read_info_frame(int fd, char *data_field) {
     int counter = 0;
-    char* buf = (char*) malloc(1);
+    char *buf = (char *)malloc(1);
 
     bool received_info = false;
 
@@ -226,7 +219,6 @@ int read_info_frame(int fd, char * data_field) {
         }
 
         else {
-            printf("%x\n", *buf);
             if (stm.current_state == START)
                 counter = 0;
 
@@ -243,14 +235,14 @@ int read_info_frame(int fd, char * data_field) {
     }
 
     int n = write_supervision_frame(fd, A_RC_RESP, C_RR);
-    
-    if(n < 0){
+
+    if (n < 0) {
         perror("Failed to send ACK message.");
         exit(1);
     }
 
     printf("Sent ACK message.\n");
-    
+
     int length = byte_destuffing(data_field, counter);
 
     return length;

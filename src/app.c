@@ -11,9 +11,8 @@ FILE *fp;
 struct stat st;
 
 int control_packet(enum Control status, char *filename, long int filesize, char* packet) {
-    size_t L1 = strlen(filename);
-    // int L2 = ceil(filesize / 8); // TODO:
-    int L2 = 1;
+    int L1 = ceil(log(filesize) / log(2) / 8);
+    size_t L2 = strlen(filename);
 
     int packet_size = 3 + L1 + 2 + L2; // Number of bytes needed for packet
 
@@ -74,7 +73,6 @@ void file_transmission() {
         for (int i = 0; i < num_chunks; i++) {
             char *data_field = (char *) malloc(CHUNK_SIZE);
 
-            fseek(fp, 0, SEEK_CUR);
             size_t length = fread(data_field, 1, CHUNK_SIZE, fp);
 
             int packet_size = data_packet(data_field, length);
@@ -97,7 +95,7 @@ void file_transmission() {
         }
     }
     
-    else if (app.status == RECEIVER) { //TODO: separate function?? 
+    else if (app.status == RECEIVER) {
         bool transmission_ended = false;
         int L1, L2, L;
 
@@ -107,7 +105,6 @@ void file_transmission() {
 
             switch (buffer[0]) {
                 case start:
-                    printf("É para aqui para baixo\n");
                     break;
 
                 case data:

@@ -38,7 +38,7 @@ void change_state(struct state_machine* stm, char field) {
             if (field == C_SET || field == C_DISC)
                 stm->current_state = C_CMD_RCV;
 
-            else if (field == 0x40)
+            else if (field == 0x40 || field == 0x00)
                 stm->current_state = C_I_RCV;
 
             else
