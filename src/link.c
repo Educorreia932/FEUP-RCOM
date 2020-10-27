@@ -132,6 +132,7 @@ int write_info_frame(int fd, char *packet, int length) {
     struct state_machine stm;
     stm.current_state = START;
     stm.status = TRANSMITTER;
+    stm.sequence_number = &llink.sequenceNumber;
 
     alarm_counter = 0;
     flag = true;
@@ -211,6 +212,7 @@ int read_info_frame(int fd, char *data_field) {
 
     stm.status = RECEIVER;
     stm.current_state = START;
+    stm.sequence_number = &llink.sequenceNumber;
 
     while (!received_info) {
         if (read(fd, buf, 1) < 0) {

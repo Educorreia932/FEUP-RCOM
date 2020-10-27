@@ -20,10 +20,10 @@
 enum state {
     START,
     FLAG_RCV,
-    A_ANSWER_RCV,
-    C_ANSWER_RCV,
     A_CMD_RCV,
+    A_ANSWER_RCV,
     C_CMD_RCV,
+    C_ANSWER_RCV,
     C_I_RCV,
     C_RR_RCV,
     C_REJ_RCV,
@@ -42,6 +42,9 @@ enum Status {
 struct state_machine {
     int current_state;
     enum Status status; /* TRANSMITTER | RECEIVER */
+    unsigned int* sequence_number;
+    char xor_result;
+    char xor_byte;
 };
 
 void change_state(struct state_machine* stm, char field);
