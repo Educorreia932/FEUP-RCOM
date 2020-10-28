@@ -2,7 +2,8 @@
 #include <stdio.h>
 
 void change_state(struct state_machine* stm, char field) {
-    printf("State %d\n", stm->current_state);
+    // printf("State %d\n", stm->current_state);
+    
     switch (stm->current_state) {
         case START:
             if (field == FLAG) 

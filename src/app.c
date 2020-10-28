@@ -53,76 +53,6 @@ int data_packet(char *data_field, int packet_size) {
     return length;
 }
 
-void file_transmission() {
-    // TODO: Move open_file() to here
-    // Send control packets and split the file in data packets to send them
-    if (app.status == TRANSMITTER) {
-        // Start packet
-        char* packet = malloc(1);
-        int length = control_packet(start, app.filename, st.st_size, packet);
-        int n = llwrite(app.fileDescriptor, packet, length);
-        
-        if(n < 0){
-            perror("Failed to send start packet.\n");
-            exit(1);
-        }
-
-        int num_chunks = ceil(st.st_size / (double)CHUNK_SIZE);
-
-        // Data packets
-        for (int i = 0; i < num_chunks; i++) {
-            char *data_field = (char *) malloc(CHUNK_SIZE);
-
-            size_t length = fread(data_field, 1, CHUNK_SIZE, fp);
-
-            int packet_size = data_packet(data_field, length);
-
-            n = llwrite(app.fileDescriptor, data_field, packet_size);
-
-            if(n < 0){
-                perror("Failed to send data packet.\n");
-                exit(1);
-            }
-        }
-
-        // End packet
-        int packet_size = control_packet(end, app.filename, st.st_size, packet);
-        n = llwrite(app.fileDescriptor, packet, packet_size);
-        
-        if(n < 0){
-            perror("Failed to send end packet.\n");
-            exit(1);
-        }
-    }
-    
-    else if (app.status == RECEIVER) {
-        bool transmission_ended = false;
-        int L1, L2, L;
-
-        while (!transmission_ended) {
-            char* buffer = (char*) malloc(MAX_SIZE);
-            int length = llread(app.fileDescriptor, buffer);
-
-            switch (buffer[0]) {
-                case start:
-                    break;
-
-                case data:
-                    L1 = buffer[3];
-                    L2 = buffer[2];
-                    L = 256 * L2 + L1;
-
-                    fwrite(buffer + 4, 1, L, fp);
-                    break;
-
-                case end:
-                    transmission_ended = true; 
-                    break;
-            }
-        }
-    }
-}
-
 struct stat open_file(char *filename) {
     // Open file
     if (app.status == TRANSMITTER) {
@@ -152,13 +82,89 @@ struct stat open_file(char *filename) {
     return st;
 }
 
+void file_transmission() {
+
+    // Send control packets and split the file in data packets to send them
+    if (app.status == TRANSMITTER) {
+        // Start packet
+        st = open_file(FILETOTRANSFER); // Open file to send and send control packet
+
+        char* packet = malloc(1);
+        int length = control_packet(start, app.filename, st.st_size, packet);
+        int n = llwrite(app.fileDescriptor, packet, length);
+        
+        if(n < 0){
+            perror("Failed to send start packet.\n");
+            exit(1);
+        }
+
+        int num_chunks = ceil(st.st_size / (double)CHUNK_SIZE);
+
+        // Data packets
+        for (int i = 0; i < num_chunks; i++) {
+            char *data_field = (char *) malloc(CHUNK_SIZE);
+
+            size_t length = fread(data_field, 1, CHUNK_SIZE, fp);
+
+            int packet_size = data_packet(data_field, length);
+
+            n = llwrite(app.fileDescriptor, data_field, packet_size);
+
+            if (n < 0){
+                perror("Failed to send data packet.\n");
+                exit(1);
+            }
+        }
+
+        // End packet
+        int packet_size = control_packet(end, app.filename, st.st_size, packet);
+        n = llwrite(app.fileDescriptor, packet, packet_size);
+        
+        if(n < 0){
+            perror("Failed to send end packet.\n");
+            exit(1);
+        }
+    }
+    
+    else if (app.status == RECEIVER) {
+        bool transmission_ended = false;
+        int L1, L2, L;
+
+        while (!transmission_ended) {
+            char* buffer = (char*) malloc(MAX_SIZE);
+            int length = llread(app.fileDescriptor, buffer);
+
+            switch (buffer[0]) {
+                case start:
+                    L1 = buffer[2];
+
+                    char* filename;
+                    
+                    st = open_file(FILETOTRANSFER); // Open file to send and send control packet
+
+                    break;
+
+                case data:
+                    L1 = buffer[3];
+                    L2 = buffer[2];
+                    L = 256 * L2 + L1;
+
+                    fwrite(buffer + 4, 1, L, fp);
+                    break;
+
+                case end:
+                    transmission_ended = true; 
+                    break;
+            }
+        }
+    }
+}
+
 int llopen(char *port, enum Status status) {
     app.status = status;
     
     int fd = establish_connection(port, status);
     app.fileDescriptor = fd;
-
-    st = open_file(FILETOTRANSFER); // Open file to send and send control packet
 
     return fd;
 }

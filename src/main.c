@@ -23,9 +23,8 @@ int main(int argc, char **argv) {
     if (strcmp("-c", argv[1]) == 0)
         fd = llopen(argv[2], TRANSMITTER);
 
-    else if (strcmp("-s", argv[1]) == 0) {
+    else if (strcmp("-s", argv[1]) == 0)
         fd = llopen(argv[2], RECEIVER);
-    }
 
     if (fd < 0) {
         perror("Failed to establish connection.\n");
