@@ -1,7 +1,6 @@
 #include "link.h"
 #include <string.h>
 
-struct linkLayer llink;
 struct termios oldtio, newtio;
 struct sigaction action;
 int fd;
@@ -102,13 +101,15 @@ int create_information_frame(char *packet, int length) {
     for (int i = 4; i < length; i++)
         BCC_2 ^= packet[i];
 
+    // TODO:
+
     length = byte_stuffing(packet, length); // Byte-stuff packet
 
     char *frame = malloc(length + 6); //TODO: check size after stuffing, cant' exceed MAX_SIZE
 
     frame[0] = FLAG;
     frame[1] = A_EM_CMD;
-    frame[2] = llink.sequenceNumber & SEQUENCE_MASK; // N(s) place 0S000000
+    frame[2] = llink->sequenceNumber & SEQUENCE_MASK; // N(s) place 0S000000
     frame[3] = A_EM_CMD ^ frame[2];      // BCC_1
 
     memcpy(frame + 4, packet, length);
@@ -132,16 +133,16 @@ int write_info_frame(int fd, char *packet, int length) {
     struct state_machine stm;
     stm.current_state = START;
     stm.status = TRANSMITTER;
-    stm.sequence_number = &llink.sequenceNumber;
+    stm.sequence_number = &llink->sequenceNumber;
 
     alarm_counter = 0;
     flag = true;
     bool receivedRR = false;
     int n; // Written characters
 
-    while (alarm_counter < llink.numTransmissions) {
+    while (alarm_counter < llink->numTransmissions) {
         if (flag) {
-            alarm(llink.timeout); // Activactes alarm
+            alarm(llink->timeout); // Activactes alarm
             flag = false;
 
             for (int i = 0; i < length; i++) {
@@ -188,13 +189,13 @@ int write_info_frame(int fd, char *packet, int length) {
 
             if (stm.current_state == STOP) {
                 printf("Received RR message.\n");
-                llink.sequenceNumber = ~llink.sequenceNumber; // 0 or 1
+                llink->sequenceNumber = ~llink->sequenceNumber; // 0 or 1
                 break;
             }
         }
     }
 
-    if (alarm_counter == llink.numTransmissions) {
+    if (alarm_counter == llink->numTransmissions) {
         perror("Failed to establish send Frame / Receive ACK.\n");
         return -1;
     }
@@ -212,7 +213,7 @@ int read_info_frame(int fd, char *data_field) {
 
     stm.status = RECEIVER;
     stm.current_state = START;
-    stm.sequence_number = &llink.sequenceNumber;
+    stm.sequence_number = &llink->sequenceNumber;
 
     while (!received_info) {
         if (read(fd, buf, 1) < 0) {
@@ -254,21 +255,20 @@ int read_info_frame(int fd, char *data_field) {
  * Opens serial port device and sets configurations.
  * Sends SET & UA frames.
  */
-int establish_connection(char *port, enum Status status) {
-    strcpy(llink.port, port);
-    llink.baudRate = BAUDRATE;
-    llink.sequenceNumber = 0;
-    llink.timeout = TIMEOUT;
-    llink.numTransmissions = NUM_TRANSMITIONS;
+int establish_connection(enum Status status) {
+    llink->baudRate = BAUDRATE;
+    llink->sequenceNumber = 0;
+    llink->timeout = TIMEOUT;
+    llink->numTransmissions = NUM_TRANSMITIONS;
 
     /*
     Open serial port device for reading and writing and not as controlling tty
     because we don't want to get killed if linenoise sends CTRL-C.
     */
-    fd = open(port, O_RDWR | O_NOCTTY);
+    fd = open(llink->port, O_RDWR | O_NOCTTY);
 
     if (fd < 0) {
-        perror(port);
+        perror(llink->port);
         exit(-1);
     }
 
@@ -326,9 +326,9 @@ int establish_connection(char *port, enum Status status) {
         bool receivedUA = false;
 
         // Tries to send SET Message
-        while (alarm_counter < llink.numTransmissions) {
+        while (alarm_counter < llink->numTransmissions) {
             if (flag) {
-                alarm(llink.timeout); // Activactes alarm
+                alarm(llink->timeout); // Activactes alarm
                 flag = false;
 
                 int n = write_supervision_frame(fd, A_EM_CMD, C_SET); // Sends SET message
@@ -365,7 +365,7 @@ int establish_connection(char *port, enum Status status) {
             }
         }
 
-        if (alarm_counter == llink.numTransmissions) {
+        if (alarm_counter == llink->numTransmissions) {
             perror("Failed to establish connection.\n");
             exit(1);
         }

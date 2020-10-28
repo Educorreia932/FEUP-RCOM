@@ -14,11 +14,13 @@ enum Control {
     end = 3
 };
 
-struct applicationLayer {
+typedef struct {
     int fileDescriptor; /* Descritor correspondente à porta série */
     enum Status status; /* TRANSMITTER | RECEIVER */
     char* filename;
-};
+} applicationLayer;
+
+applicationLayer* app;
 
 void file_transmission();
 
