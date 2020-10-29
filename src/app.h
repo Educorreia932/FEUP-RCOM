@@ -1,6 +1,6 @@
 #include "link.h"
 
-#define FILETOTRANSFER "../files/pinguim.gif"
+#define FILETOTRANSFER "../images/pinguim.gif"
 
 // Control Packet
 #define T_FILENAME 0x00 // T1

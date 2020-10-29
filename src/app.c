@@ -60,7 +60,7 @@ struct stat open_file(char *filename) {
 
     else {
         // TODO: This is only needed when using SOCAT on the same PC
-        char copy_filename[255] = "../files/teste_copia.png";
+        char copy_filename[255] = "../images/teste_copia.gif";
         fp = fopen(copy_filename, "w"); //Open for writing
     }
 
