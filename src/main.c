@@ -5,12 +5,12 @@
 #include "flags.h"
 
 int main(int argc, char **argv) {
-    app = (applicationLayer*) malloc(sizeof(applicationLayer));
-    llink = (linkLayer*) malloc(sizeof(linkLayer));
-    
+    app = (applicationLayer *)malloc(sizeof(applicationLayer));
+    llink = (linkLayer *)malloc(sizeof(linkLayer));
+
     // Parse commnad line arguments
     parse_flags(argc, argv);
-              
+
     // Ask app to establish connection
     int fd = llopen(llink->port, app->status);
 

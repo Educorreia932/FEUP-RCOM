@@ -9,13 +9,11 @@
 FILE *fp;
 struct stat st;
 
-int control_packet(enum Control status, char *filename, long int filesize, char* packet) {
+int control_packet(enum Control status, char *filename, long int filesize, char *packet) {
     int L1 = ceil(log(filesize) / log(2) / 8);
     size_t L2 = strlen(filename);
 
     int packet_size = 3 + L1 + 2 + L2; // Number of bytes needed for packet
-
-    int n = realloc(packet, packet_size);
 
     packet[0] = status;
     packet[1] = T_FILENAME;
@@ -60,7 +58,7 @@ struct stat open_file(char *filename) {
 
     else {
         // TODO: This is only needed when using SOCAT on the same PC
-        char copy_filename[255] = "../images/teste_copia.gif";
+        char copy_filename[255] = "../files/pinguim_copia.gif";
         fp = fopen(copy_filename, "w"); //Open for writing
     }
 
@@ -85,13 +83,13 @@ void file_transmission() {
     // Send control packets and split the file in data packets to send them
     if (app->status == TRANSMITTER) {
         // Start packet
-        st = open_file(FILETOTRANSFER); // Open file to send and send control packet
+        st = open_file(app->filename); // Open file to send and send control packet
 
-        char* packet = malloc(1);
+        char *packet = malloc(1);
         int length = control_packet(start, app->filename, st.st_size, packet);
         int n = llwrite(app->fileDescriptor, packet, length);
-        
-        if(n < 0){
+
+        if (n < 0) {
             perror("Failed to send start packet.\n");
             exit(1);
         }
@@ -100,7 +98,7 @@ void file_transmission() {
 
         // Data packets
         for (int i = 0; i < num_chunks; i++) {
-            char *data_field = (char *) malloc(CHUNK_SIZE);
+            char *data_field = (char *)malloc(CHUNK_SIZE);
 
             size_t length = fread(data_field, 1, CHUNK_SIZE, fp);
 
@@ -108,7 +106,7 @@ void file_transmission() {
 
             n = llwrite(app->fileDescriptor, data_field, packet_size);
 
-            if (n < 0){
+            if (n < 0) {
                 perror("Failed to send data packet.\n");
                 exit(1);
             }
@@ -117,28 +115,28 @@ void file_transmission() {
         // End packet
         int packet_size = control_packet(end, app->filename, st.st_size, packet);
         n = llwrite(app->fileDescriptor, packet, packet_size);
-        
-        if(n < 0){
+
+        if (n < 0) {
             perror("Failed to send end packet.\n");
             exit(1);
         }
     }
-    
+
     else if (app->status == RECEIVER) {
         bool transmission_ended = false;
         int L1, L2, L;
 
         while (!transmission_ended) {
-            char* buffer = (char*) malloc(MAX_SIZE);
+            char *buffer = (char *)malloc(MAX_SIZE);
             int length = llread(app->fileDescriptor, buffer);
 
             switch (buffer[0]) {
                 case start:
                     L1 = buffer[2];
 
-                    char* filename;
-                    
-                    st = open_file(FILETOTRANSFER); // Open file to send and send control packet
+                    char *filename;
+
+                    st = open_file(app->filename); // Open file to send and send control packet
 
                     break;
 
@@ -151,16 +149,16 @@ void file_transmission() {
                     break;
 
                 case end:
-                    transmission_ended = true; 
+                    transmission_ended = true;
                     break;
             }
         }
     }
 }
 
-int llopen(char* port, enum Status status) {
+int llopen(char *port, enum Status status) {
     app->status = status;
-    
+
     int fd = establish_connection(port, status);
     app->fileDescriptor = fd;
 

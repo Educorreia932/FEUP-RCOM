@@ -54,6 +54,8 @@ dkms.conf
 # Binaries
 main
 
-docs/
-
 StateMachine.graphml
+
+# Folders
+docs/
+.vscode/

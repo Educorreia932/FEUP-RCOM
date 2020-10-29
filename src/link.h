@@ -12,14 +12,11 @@
 #include <termios.h>
 #include <unistd.h>
 
-#define BAUDRATE B38400
-#define TIMEOUT 20
-#define NUM_TRANSMITIONS 3
 #define SEQUENCE_MASK 0x40
 
 typedef struct {
     char port[20];                 /* Dispositivo /dev/ttySx, x = 0, 1 */
-    int baudRate;                  /* Velocidade de transmissão */
+    int baudrate;                  /* Velocidade de transmissão */
     unsigned int sequenceNumber;   /* Número de sequência da trama: 0, 1 */
     unsigned int timeout;          /* Valor do temporizador: 1 s */
     unsigned int numTransmissions; /* Número de tentativas em caso de falha*/

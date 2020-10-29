@@ -8,6 +8,8 @@ int fd;
 bool flag = true;
 int alarm_counter = 0;
 
+// TODO: Cleanup serial port with fflush when necessary
+
 void alarm_handler() {
     printf("Alarm # %d\n", alarm_counter);
     flag = true;
@@ -63,7 +65,7 @@ int byte_stuffing(char *packet, int length) {
     return counter;
 }
 
-int byte_destuffing(char *packet, int length) {
+int byte_destuffing(char* packet, int length) {
     int counter = length;
 
     // Calculate size of data to allocate the necessary space
@@ -74,7 +76,7 @@ int byte_destuffing(char *packet, int length) {
         }
     }
 
-    char *frame = (char *)malloc(counter);
+    char* frame = (char*)malloc(counter);
     int index = 0;
 
     // Fill the frame, replacing escaped occurrences
@@ -95,7 +97,7 @@ int byte_destuffing(char *packet, int length) {
 
 // Information Frames
 
-int create_information_frame(char *packet, int length) {
+int create_information_frame(char* packet, int length) {
     char BCC_2 = ~packet[0];
 
     for (int i = 4; i < length; i++)
@@ -105,12 +107,12 @@ int create_information_frame(char *packet, int length) {
 
     length = byte_stuffing(packet, length); // Byte-stuff packet
 
-    char *frame = malloc(length + 6); //TODO: check size after stuffing, cant' exceed MAX_SIZE
+    char* frame = malloc(length + 6); //TODO: check size after stuffing, cant' exceed MAX_SIZE
 
     frame[0] = FLAG;
     frame[1] = A_EM_CMD;
     frame[2] = llink->sequenceNumber & SEQUENCE_MASK; // N(s) place 0S000000
-    frame[3] = A_EM_CMD ^ frame[2];      // BCC_1
+    frame[3] = A_EM_CMD ^ frame[2];                   // BCC_1
 
     memcpy(frame + 4, packet, length);
 
@@ -122,7 +124,7 @@ int create_information_frame(char *packet, int length) {
     return length + 6;
 }
 
-int write_info_frame(int fd, char *packet, int length) {
+int write_info_frame(int fd, char* packet, int length) {
     // Prepare frame to send
     length = create_information_frame(packet, length);
 
@@ -203,9 +205,9 @@ int write_info_frame(int fd, char *packet, int length) {
     return n;
 }
 
-int read_info_frame(int fd, char *data_field) {
+int read_info_frame(int fd, char* data_field) {
     int counter = 0;
-    char *buf = (char *)malloc(1);
+    char* buf = (char*)malloc(1);
 
     bool received_info = false;
 
@@ -256,10 +258,7 @@ int read_info_frame(int fd, char *data_field) {
  * Sends SET & UA frames.
  */
 int establish_connection(enum Status status) {
-    llink->baudRate = BAUDRATE;
     llink->sequenceNumber = 0;
-    llink->timeout = TIMEOUT;
-    llink->numTransmissions = NUM_TRANSMITIONS;
 
     /*
     Open serial port device for reading and writing and not as controlling tty
@@ -279,7 +278,7 @@ int establish_connection(enum Status status) {
     }
 
     bzero(&newtio, sizeof(newtio));
-    newtio.c_cflag = BAUDRATE | CS8 | CLOCAL | CREAD;
+    newtio.c_cflag = llink->baudrate | CS8 | CLOCAL | CREAD;
     newtio.c_iflag = IGNPAR;
     newtio.c_oflag = 0;
 
