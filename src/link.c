@@ -30,7 +30,7 @@ int write_supervision_frame(int fd, char a, char c) {
 
 // Stuffing
 
-int byte_stuffing(char *packet, int length) {
+int byte_stuffing(char *packet, int length, char** frame) {
     int counter = length;
 
     // Calculate size of data to allocate the necessary space
@@ -39,33 +39,32 @@ int byte_stuffing(char *packet, int length) {
             counter++;
     }
 
-    char *frame = (char *)malloc(counter);
+    *frame = NULL;
+    *frame = (char *)malloc(counter);
     int index = 0;
 
     // Fill the frame, replacing flage and escape occurrences
     for (int c = 0; c < length; c++) {
         if (packet[c] == FLAG) {
-            frame[index] = ESCAPE;
-            frame[++index] = FLAG_STUFF;
+            (*frame)[index] = ESCAPE;
+            (*frame)[++index] = FLAG_STUFF;
         }
 
         else if (packet[c] == ESCAPE) {
-            frame[index] = ESCAPE;
-            frame[++index] = ESCAPE_STUFF;
+            (*frame)[index] = ESCAPE;
+            (*frame)[++index] = ESCAPE_STUFF;
         }
 
         else
-            frame[index] = packet[c];
+            (*frame)[index] = packet[c];
 
         index++;
     }
 
-    memcpy(packet, frame, counter);
-
     return counter;
 }
 
-int byte_destuffing(char* packet, int length) {
+int byte_destuffing(char* packet, int length, char ** frame) {
     int counter = length;
 
     // Calculate size of data to allocate the necessary space
@@ -76,56 +75,58 @@ int byte_destuffing(char* packet, int length) {
         }
     }
 
-    char* frame = (char*)malloc(counter);
+    *frame = NULL;
+    *frame = (char*)malloc(counter);
     int index = 0;
 
     // Fill the frame, replacing escaped occurrences
     for (int c = 0; c < length; c++) {
         if (packet[c] == ESCAPE)
-            frame[index] = packet[++c] ^ 0x20;
+            (*frame)[index] = packet[++c] ^ 0x20;
 
         else
-            frame[index] = packet[c];
+            (*frame)[index] = packet[c];
 
         index++;
     }
-
-    memcpy(packet, frame, counter);
 
     return counter;
 }
 
 // Information Frames
 
-int create_information_frame(char* packet, int length) {
-    char BCC_2 = ~packet[0];
+int create_information_frame(char* packet, int length, char ** frame) {
+    //BCC
+    char BCC_2 = packet[4];
 
-    for (int i = 4; i < length; i++)
+    for (int i = 5; i < length; i++)
         BCC_2 ^= packet[i];
 
+    char *stuffed;
+    int new_length = byte_stuffing(packet, length, &stuffed); // Byte-stuff packet
 
-    length = byte_stuffing(packet, length); // Byte-stuff packet
+    *frame = (char*)malloc(new_length + 6); //TODO: check size after stuffing, cant' exceed MAX_SIZE
 
-    char* frame = malloc(length + 6); //TODO: check size after stuffing, cant' exceed MAX_SIZE
-    
-    frame[0] = FLAG;
-    frame[1] = A_EM_CMD;
-    frame[2] = llink->sequenceNumber & SEQUENCE_MASK; // N(s) place 0S000000
-    frame[3] = A_EM_CMD ^ frame[2];                   // BCC_1
+    (*frame)[0] = FLAG; // F
+    (*frame)[1] = A_EM_CMD; // A
+    (*frame)[2] = llink->sequenceNumber & SEQUENCE_MASK; // N(s) place 0S000000 C
+    (*frame)[3] = A_EM_CMD ^ (*frame)[2];                    // BCC_1
 
-    memcpy(frame + 4, packet, length);
+    memcpy(*frame + 4, stuffed, new_length); 
+    free(stuffed);
+    new_length += 4;
 
-    // frame[length + 4] = BCC_2;
-    frame[length + 5] = FLAG;
+    (*frame)[new_length++] = BCC_2;
+    (*frame)[new_length++] = FLAG;
 
-    memcpy(packet, frame, length + 6);
-
-    return length + 6;
+    return new_length;
 }
 
 int write_info_frame(int fd, char* packet, int length) {
+    char *frame;
+
     // Prepare frame to send
-    length = create_information_frame(packet, length);
+    length = create_information_frame(packet, length, &frame);
 
     char buf[1];     //TODO: Check size
     char frame_type; // RR or REJ
@@ -147,16 +148,15 @@ int write_info_frame(int fd, char* packet, int length) {
             flag = false;
 
             for (int i = 0; i < length; i++) {
-                n = write(fd, packet, 1); // Sends I Frame
+                n = write(fd, frame, 1); // Sends I Frame
 
-                packet++;
+                frame++;
 
                 if (n == -1) {
                     perror("Failed to send information Frame message.");
                     return -1;
                 }
             }
-
             printf("Sent information frame. \n");
         }
 
@@ -196,8 +196,10 @@ int write_info_frame(int fd, char* packet, int length) {
         }
     }
 
+    //free(frame); TODO
+
     if (alarm_counter == llink->numTransmissions) {
-        perror("Failed to establish send Frame / Receive ACK.\n");
+        perror("Failed receive ACK.\n");
         return -1;
     }
 
@@ -216,6 +218,7 @@ int read_info_frame(int fd, char* data_field) {
     stm.current_state = START;
     stm.sequence_number = &llink->sequenceNumber;
 
+    char frame[MAX_SIZE];
     while (!received_info) {
         if (read(fd, buf, 1) < 0) {
             perror("Failed to read.");
@@ -229,7 +232,7 @@ int read_info_frame(int fd, char* data_field) {
             change_state(&stm, *buf); // Check if it is SET msg (state machine)
 
             if (stm.current_state == D_RCV) {
-                data_field[counter] = *buf;
+                frame[counter] = *buf;
                 counter++;
             }
 
@@ -247,7 +250,9 @@ int read_info_frame(int fd, char* data_field) {
 
     printf("Sent ACK message.\n");
 
-    int length = byte_destuffing(data_field, counter);
+    int length = byte_destuffing(frame, counter, &data_field);
+
+    free(buf);
 
     return length;
 }

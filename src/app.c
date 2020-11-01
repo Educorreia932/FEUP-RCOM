@@ -37,22 +37,22 @@ int control_packet(enum Control status, char *filename, int filesize, char** pac
     return packet_size;
 }
 
-int data_packet(char *data_field, int packet_size) {
-    char *packet;
+int data_packet(char *data_field, int packet_size, char** packet) {
 
     int L1 = packet_size & 0xFF;
     int L2 = packet_size >> 8;
 
     int length = 4 + packet_size;
 
-    packet = malloc(packet_size);
-    packet[0] = data;
-    packet[1] = 0; // TODO: Change later
-    packet[2] = L2;
-    packet[3] = L1;
+    *packet = NULL;
+    *packet = (char*)malloc(length);
+    
+    (*packet)[0] = data;
+    (*packet)[1] = 0; // TODO: Change later
+    (*packet)[2] = L2;
+    (*packet)[3] = L1;
 
-    memcpy(packet + 4, data_field, packet_size);
-    memcpy(data_field, packet, length);
+    memcpy(*packet + 4, data_field, packet_size);
 
     return length;
 }
@@ -107,15 +107,17 @@ void file_transmission() {
 
         int num_chunks = ceil(st.st_size / (double)CHUNK_SIZE);
 
+        char *pack;
         // Data packets
         for (int i = 0; i < num_chunks; i++) {
             char data_field[CHUNK_SIZE];
 
             size_t length = fread(data_field, 1, CHUNK_SIZE, fp);
 
-            int packet_size = data_packet(data_field, length);
+            int packet_size = data_packet(data_field, length, &pack);
 
-            n = llwrite(app->fileDescriptor, data_field, packet_size);
+            n = llwrite(app->fileDescriptor, pack, packet_size);
+            free(pack);
 
             if (n < 0) {
                 perror("Failed to send data packet.\n");
@@ -124,9 +126,12 @@ void file_transmission() {
         }
 
         // End packet
-        int packet_size = control_packet(end, app->filename, st.st_size, &packet);
-        n = llwrite(app->fileDescriptor, packet, packet_size);
-        free(packet);
+        char* end_packet;
+        int packet_size = control_packet(end, app->filename, st.st_size, &end_packet);
+        
+        n = llwrite(app->fileDescriptor, end_packet, packet_size);
+        free(end_packet);
+        
         if (n < 0) {
             perror("Failed to send end packet.\n");
             exit(1);
@@ -138,7 +143,7 @@ void file_transmission() {
         int L1, L2, L;
 
         while (!transmission_ended) {
-            char *buffer = (char *)malloc(MAX_SIZE);
+            char buffer[MAX_SIZE];
             int length = llread(app->fileDescriptor, buffer);
 
             switch (buffer[0]) {
