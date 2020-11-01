@@ -257,17 +257,17 @@ int read_info_frame(int fd, char* data_field) {
  * Opens serial port device and sets configurations.
  * Sends SET & UA frames.
  */
-int establish_connection(enum Status status) {
+int establish_connection(char * port, enum Status status) {
     llink->sequenceNumber = 0;
 
     /*
     Open serial port device for reading and writing and not as controlling tty
     because we don't want to get killed if linenoise sends CTRL-C.
     */
-    fd = open(llink->port, O_RDWR | O_NOCTTY);
+    fd = open(port, O_RDWR | O_NOCTTY);
 
     if (fd < 0) {
-        perror(llink->port);
+        perror(port);
         exit(-1);
     }
 
@@ -311,6 +311,7 @@ int establish_connection(enum Status status) {
     char buf[5];
 
     if (status == TRANSMITTER) {
+        
         // Set alarm handler
         action.sa_handler = &alarm_handler;
         sigemptyset(&action.sa_mask);

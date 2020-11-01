@@ -9,23 +9,30 @@
 FILE *fp;
 struct stat st;
 
-int control_packet(enum Control status, char *filename, long int filesize, char *packet) {
-    int L1 = ceil(log(filesize) / log(2) / 8);
+int control_packet(enum Control status, char *filename, int filesize, char** packet) {
+    int L1 = ceil(log(filesize) / log(2) / 8); 
     size_t L2 = strlen(filename);
 
     int packet_size = 3 + L1 + 2 + L2; // Number of bytes needed for packet
 
-    packet[0] = status;
-    packet[1] = T_FILENAME;
-    packet[2] = L1;
+    *packet = NULL;
+    *packet = (char*)malloc(packet_size);
+
+    (*packet)[0] = status; // C
+    (*packet)[1] = T_FILESIZE;  // T1
+    (*packet)[2] = L1; // L1                                   
 
     int c;
-
     for (c = 3; c < L1 + 3; c++)
-        packet[c] = filename[c - 3];
+        (*packet)[c] = (filesize >> 8*(c-3)) & (0xFF); // V1
 
-    packet[++c] = T_FILESIZE;
-    packet[++c] = L2;
+    (*packet)[c++] = T_FILENAME; // T2
+    (*packet)[c++] = L2; // L2
+    
+    int l = c;
+    for(; c < L2 + l; c++)
+        (*packet)[c] = filename[c - l];
+        
 
     return packet_size;
 }
@@ -33,16 +40,16 @@ int control_packet(enum Control status, char *filename, long int filesize, char 
 int data_packet(char *data_field, int packet_size) {
     char *packet;
 
-    int L1 = (packet_size & 0xFF00) >> 8;
-    int L2 = packet_size & 0xFF;
+    int L1 = packet_size & 0xFF;
+    int L2 = packet_size >> 8;
 
     int length = 4 + packet_size;
 
     packet = malloc(packet_size);
     packet[0] = data;
     packet[1] = 0; // TODO: Change later
-    packet[2] = L1;
-    packet[3] = L2;
+    packet[2] = L2;
+    packet[3] = L1;
 
     memcpy(packet + 4, data_field, packet_size);
     memcpy(data_field, packet, length);
@@ -85,9 +92,15 @@ void file_transmission() {
         // Start packet
         st = open_file(app->filename); // Open file to send and send control packet
 
-        char *packet = malloc(1);
-        int length = control_packet(start, app->filename, st.st_size, packet);
+        char *packet;
+        int length = control_packet(start, app->filename, st.st_size, &packet);
+
+        for (int i = 0; i < length; i++)
+            printf("%x\n", packet[i]);
+
+
         int n = llwrite(app->fileDescriptor, packet, length);
+        free(packet);
 
         if (n < 0) {
             perror("Failed to send start packet.\n");
@@ -113,9 +126,9 @@ void file_transmission() {
         }
 
         // End packet
-        int packet_size = control_packet(end, app->filename, st.st_size, packet);
+        int packet_size = control_packet(end, app->filename, st.st_size, &packet);
         n = llwrite(app->fileDescriptor, packet, packet_size);
-
+        free(packet);
         if (n < 0) {
             perror("Failed to send end packet.\n");
             exit(1);
@@ -148,7 +161,7 @@ void file_transmission() {
                     fwrite(buffer + 4, 1, L, fp);
                     break;
 
-                case end:
+                case end: // TODO: Ler packet
                     transmission_ended = true;
                     break;
             }
@@ -157,8 +170,6 @@ void file_transmission() {
 }
 
 int llopen(char *port, enum Status status) {
-    app->status = status;
-
     int fd = establish_connection(port, status);
     app->fileDescriptor = fd;
 

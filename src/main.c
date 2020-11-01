@@ -12,7 +12,7 @@ int main(int argc, char **argv) {
     parse_flags(argc, argv);
 
     // Ask app to establish connection
-    int fd = llopen(llink->port, app->status);
+    int fd = llopen(app->port, app->status); // TODO: port 
 
     if (fd < 0) {
         perror("Failed to establish connection.\n");

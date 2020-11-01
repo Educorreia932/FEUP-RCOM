@@ -1,8 +1,8 @@
 #include "link.h"
 
 // Control Packet
-#define T_FILENAME 0x00 // T1
-#define T_FILESIZE 0x01 // T2
+#define T_FILESIZE 0x00 // T1
+#define T_FILENAME 0x01 // T2
 
 #define CHUNK_SIZE 131072
 
@@ -13,6 +13,7 @@ enum Control {
 };
 
 typedef struct {
+    char port[20];                 /* Dispositivo /dev/ttySx, x = 0, 1 */
     int fileDescriptor; /* Descritor correspondente à porta série */
     enum Status status; /* TRANSMITTER | RECEIVER */
     char* filename;

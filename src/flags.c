@@ -7,7 +7,7 @@ void parse_flags(int argc, char** argv) {
 
         // Serial Port
         if (!strncmp(argv[i], "/dev/ttyS", 9))
-            strcpy(llink->port, argv[i]);
+            strcpy(app->port, argv[i]);
 
         // Status
         else if (!strcmp(argv[i], "-c") || !strcmp(argv[i], "--client"))
