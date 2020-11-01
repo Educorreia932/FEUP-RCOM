@@ -30,7 +30,7 @@ int write_supervision_frame(int fd, char a, char c) {
 
 // Stuffing
 
-int byte_stuffing(char *packet, int length, char** frame) {
+int byte_stuffing(char* packet, int length, char** frame) {
     int counter = length;
 
     // Calculate size of data to allocate the necessary space
@@ -40,7 +40,7 @@ int byte_stuffing(char *packet, int length, char** frame) {
     }
 
     *frame = NULL;
-    *frame = (char *)malloc(counter);
+    *frame = (char*) malloc(counter);
     int index = 0;
 
     // Fill the frame, replacing flage and escape occurrences
@@ -64,7 +64,7 @@ int byte_stuffing(char *packet, int length, char** frame) {
     return counter;
 }
 
-int byte_destuffing(char* packet, int length, char ** frame) {
+int byte_destuffing(char* packet, int length, char** frame) {
     int counter = length;
 
     // Calculate size of data to allocate the necessary space
@@ -76,7 +76,7 @@ int byte_destuffing(char* packet, int length, char ** frame) {
     }
 
     *frame = NULL;
-    *frame = (char*)malloc(counter);
+    *frame = (char*) malloc(counter);
     int index = 0;
 
     // Fill the frame, replacing escaped occurrences
@@ -95,40 +95,39 @@ int byte_destuffing(char* packet, int length, char ** frame) {
 
 // Information Frames
 
-int create_information_frame(char* packet, int length, char ** frame) {
-    //BCC
+int create_information_frame(char* packet, int length, char** frame) {
     char BCC_2 = packet[4];
 
     for (int i = 5; i < length; i++)
         BCC_2 ^= packet[i];
 
-    char *stuffed;
+    char* stuffed;
     int new_length = byte_stuffing(packet, length, &stuffed); // Byte-stuff packet
 
-    *frame = (char*)malloc(new_length + 6); //TODO: check size after stuffing, cant' exceed MAX_SIZE
+    *frame = (char*) malloc(new_length + 6); //TODO: check size after stuffing, cant' exceed MAX_SIZE
 
-    (*frame)[0] = FLAG; // F
-    (*frame)[1] = A_EM_CMD; // A
+    (*frame)[0] = FLAG;                                  // F
+    (*frame)[1] = A_EM_CMD;                              // A
     (*frame)[2] = llink->sequenceNumber & SEQUENCE_MASK; // N(s) place 0S000000 C
-    (*frame)[3] = A_EM_CMD ^ (*frame)[2];                    // BCC_1
+    (*frame)[3] = A_EM_CMD ^ (*frame)[2];                // BCC_1
 
-    memcpy(*frame + 4, stuffed, new_length); 
+    memcpy(*frame + 4, stuffed, new_length);
     free(stuffed);
     new_length += 4;
 
-    (*frame)[new_length++] = BCC_2;
+    (*frame)[new_length++] = 0; // BCC_2 TODO: STUFF IT DIABO SATANÁS BEELZUB PROTEGE-NOS
     (*frame)[new_length++] = FLAG;
 
     return new_length;
 }
 
 int write_info_frame(int fd, char* packet, int length) {
-    char *frame;
+    char* frame;
 
     // Prepare frame to send
     length = create_information_frame(packet, length, &frame);
 
-    char buf[1];     //TODO: Check size
+    char buffer[1];
     char frame_type; // RR or REJ
 
     // Start state machine
@@ -148,6 +147,7 @@ int write_info_frame(int fd, char* packet, int length) {
             flag = false;
 
             for (int i = 0; i < length; i++) {
+                // printf("BUFFER %x\n", frame[0]);
                 n = write(fd, frame, 1); // Sends I Frame
 
                 frame++;
@@ -157,10 +157,11 @@ int write_info_frame(int fd, char* packet, int length) {
                     return -1;
                 }
             }
+
             printf("Sent information frame. \n");
         }
 
-        if (read(fd, buf, 1) < 0) {
+        if (read(fd, buffer, 1) < 0) {
             // Read was not interrupted by the alarm, so it wasn't the cause for errno
             if (errno != EINTR) {
                 perror("Failed to read.");
@@ -186,17 +187,18 @@ int write_info_frame(int fd, char* packet, int length) {
             //     }
             // }
 
-            change_state(&stm, *buf); // Check if it is SET msg (state machine)
+            change_state(&stm, buffer[0]); // Check if it is SET msg (state machine)
 
             if (stm.current_state == STOP) {
                 printf("Received RR message.\n");
                 llink->sequenceNumber = ~llink->sequenceNumber; // 0 or 1
+
                 break;
             }
         }
     }
 
-    //free(frame); TODO
+    // free(frame);
 
     if (alarm_counter == llink->numTransmissions) {
         perror("Failed receive ACK.\n");
@@ -206,9 +208,9 @@ int write_info_frame(int fd, char* packet, int length) {
     return n;
 }
 
-int read_info_frame(int fd, char* data_field) {
+int read_info_frame(int fd, char** data_field) {
     int counter = 0;
-    char* buf = (char*)malloc(1);
+    char buffer[1];
 
     bool received_info = false;
 
@@ -219,8 +221,9 @@ int read_info_frame(int fd, char* data_field) {
     stm.sequence_number = &llink->sequenceNumber;
 
     char frame[MAX_SIZE];
+
     while (!received_info) {
-        if (read(fd, buf, 1) < 0) {
+        if (read(fd, buffer, 1) < 0) {
             perror("Failed to read.");
             exit(1);
         }
@@ -229,10 +232,10 @@ int read_info_frame(int fd, char* data_field) {
             if (stm.current_state == START)
                 counter = 0;
 
-            change_state(&stm, *buf); // Check if it is SET msg (state machine)
+            change_state(&stm, buffer[0]); // Check if it is SET msg (state machine)
 
             if (stm.current_state == D_RCV) {
-                frame[counter] = *buf;
+                frame[counter] = buffer[0];
                 counter++;
             }
 
@@ -250,10 +253,8 @@ int read_info_frame(int fd, char* data_field) {
 
     printf("Sent ACK message.\n");
 
-    int length = byte_destuffing(frame, counter, &data_field);
-
-    free(buf);
-
+    int length = byte_destuffing(frame, counter, data_field);
+    
     return length;
 }
 
@@ -261,7 +262,7 @@ int read_info_frame(int fd, char* data_field) {
  * Opens serial port device and sets configurations.
  * Sends SET & UA frames.
  */
-int establish_connection(char * port, enum Status status) {
+int establish_connection(char* port, enum Status status) {
     llink->sequenceNumber = 0;
 
     /*
@@ -315,7 +316,7 @@ int establish_connection(char * port, enum Status status) {
     char buf[5];
 
     if (status == TRANSMITTER) {
-        
+
         // Set alarm handler
         action.sa_handler = &alarm_handler;
         sigemptyset(&action.sa_mask);
