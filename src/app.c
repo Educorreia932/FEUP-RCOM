@@ -57,15 +57,11 @@ int data_packet(char* data_field, int packet_size, char** packet) {
 
 struct stat open_file(char* filename) {
     // Open file
-    if (app->status == TRANSMITTER) {
+    if (app->status == TRANSMITTER) 
         fp = fopen(filename, "r"); //Open for reading
-    }
 
-    else {
-        // TODO: This is only needed when using SOCAT on the same PC
-        char copy_filename[255] = "../files/pinguim_copia.gif";
-        fp = fopen(copy_filename, "w"); //Open for writing
-    }
+    else 
+        fp = fopen(filename, "w"); //Open for writing
 
     if (fp == NULL) {
         perror("Failed to open file.\n");
@@ -170,8 +166,14 @@ void file_transmission() {
             switch (buffer[0]) {
                 case start:
                     L1 = buffer[2];
+                    int L2_index = 4 + L1;
+                    L2 = buffer[L2_index]; // Skip 4 bytes (C, T1, L1 and T2) and V1 field (of size L1)
+                    int V2_index = L2_index + 1;
 
-                    st = open_file(app->filename); // Open file to send and send control packet
+                    char* filename = (char*) malloc(L2);
+                    memcpy(filename, V2_index, L2);
+
+                    st = open_file("../files/pinguim2.gif"); // Open file to send and send control packet
 
                     break;
 

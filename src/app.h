@@ -13,7 +13,7 @@ enum Control {
 };
 
 typedef struct {
-    char port[20];                 /* Dispositivo /dev/ttySx, x = 0, 1 */
+    char port[20];      /* Dispositivo /dev/ttySx, x = 0, 1 */
     int fileDescriptor; /* Descritor correspondente à porta série */
     enum Status status; /* TRANSMITTER | RECEIVER */
     char filename[256];
