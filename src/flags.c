@@ -34,6 +34,6 @@ void parse_flags(int argc, char** argv) {
 
         // File to transfer
         else if (!strcmp(argv[i], "-f") || !strcmp(argv[i], "--file"))
-            strcpy(app->filename = argv[i + 1], argv[i + 1]);
+            strcpy(app->filename, argv[i + 1]);
     }
 }

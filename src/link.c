@@ -103,12 +103,11 @@ int create_information_frame(char* packet, int length) {
     for (int i = 4; i < length; i++)
         BCC_2 ^= packet[i];
 
-    // TODO:
 
     length = byte_stuffing(packet, length); // Byte-stuff packet
 
     char* frame = malloc(length + 6); //TODO: check size after stuffing, cant' exceed MAX_SIZE
-
+    
     frame[0] = FLAG;
     frame[1] = A_EM_CMD;
     frame[2] = llink->sequenceNumber & SEQUENCE_MASK; // N(s) place 0S000000

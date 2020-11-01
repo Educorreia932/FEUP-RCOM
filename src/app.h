@@ -16,7 +16,7 @@ typedef struct {
     char port[20];                 /* Dispositivo /dev/ttySx, x = 0, 1 */
     int fileDescriptor; /* Descritor correspondente à porta série */
     enum Status status; /* TRANSMITTER | RECEIVER */
-    char* filename;
+    char filename[256];
 } applicationLayer;
 
 applicationLayer* app;

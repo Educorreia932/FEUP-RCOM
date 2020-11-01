@@ -81,8 +81,6 @@ struct stat open_file(char *filename) {
         exit(1);
     }
 
-    app->filename = filename;
-
     return st;
 }
 
@@ -95,8 +93,8 @@ void file_transmission() {
         char *packet;
         int length = control_packet(start, app->filename, st.st_size, &packet);
 
-        for (int i = 0; i < length; i++)
-            printf("%x\n", packet[i]);
+        //for (int i = 0; i < length; i++)
+           // printf("%x\n", packet[i]);
 
 
         int n = llwrite(app->fileDescriptor, packet, length);
@@ -111,7 +109,7 @@ void file_transmission() {
 
         // Data packets
         for (int i = 0; i < num_chunks; i++) {
-            char *data_field = (char *)malloc(CHUNK_SIZE);
+            char data_field[CHUNK_SIZE];
 
             size_t length = fread(data_field, 1, CHUNK_SIZE, fp);
 
@@ -146,8 +144,6 @@ void file_transmission() {
             switch (buffer[0]) {
                 case start:
                     L1 = buffer[2];
-
-                    char *filename;
 
                     st = open_file(app->filename); // Open file to send and send control packet
 

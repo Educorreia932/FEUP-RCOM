@@ -2,10 +2,10 @@
 CC = gcc
 
 # Flags
-CFLAGS = -Wall
+CFLAGS = -Wall -g
 
 main: 
-	@gcc -o main app.c link.c main.c state_machine.c flags.c -lm
+	@gcc $(CFLAGS) -o main app.c link.c main.c state_machine.c flags.c -lm
 
 clean:
 	@rm -f main
