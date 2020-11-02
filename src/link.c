@@ -117,7 +117,7 @@ int create_information_frame(unsigned char* packet, int length, unsigned char** 
     new_length += 4;
 
     int n = byte_stuffing(&BCC_2, 1, &stuffed); // Byte-stuff BCC_2
-    memcpy(*frame + new_length, stuffed, n); // BCC_2
+    memcpy(*frame + new_length, stuffed, n);    // BCC_2
 
     (*frame)[new_length++] = FLAG;
 
@@ -141,7 +141,6 @@ int write_info_frame(int fd, unsigned char* packet, int length) {
 
     alarm_counter = 0;
     flag = true;
-    bool receivedRR = false;
     int n; // Written characters
 
     while (alarm_counter < llink->numTransmissions) {
@@ -150,7 +149,6 @@ int write_info_frame(int fd, unsigned char* packet, int length) {
             flag = false;
 
             for (int i = 0; i < length; i++) {
-                // printf("BUFFER %x\n", frame[0]);
                 n = write(fd, frame, 1); // Sends I Frame
 
                 frame++;
@@ -174,25 +172,27 @@ int write_info_frame(int fd, unsigned char* packet, int length) {
 
         // No error occurred
         else {
-            // if (stm.current_state == C_RR_RCV) //RR frame
-            //     frame_type = C_RR_RCV;
+            change_state(&stm, buffer[0]);
 
-            // else if (stm.current_state == C_REJ_RCV) //REJ frame
-            //     frame_type = C_REJ_RCV;
+            if (stm.current_state == C_RR_RCV) // RR frame
+                frame_type = C_RR_RCV;
 
-            // else if (stm.current_state == STOP) { //Read frame successfuly
-            //     if (frame_type == C_RR_RCV)       //Check frame type (RR or REJ)
-            //         receivedRR = true;
+            else if (stm.current_state == C_REJ_RCV) // REJ frame
+                frame_type = C_REJ_RCV;
 
-            //     else { //Received REJ frame. Need to resend I Frame (flag = 0).
-            //         flag = 0;
-            //         stm.current_state = START; //Restart state_machine
-            //     }
-            // }
+            else if (stm.current_state == STOP) { // Read frame successfuly
+                // Check frame type (RR or REJ)
+                if (frame_type == C_RR_RCV) {
+                    alarm(0);
+                    break;
+                }      
 
-            change_state(&stm, buffer[0]); // Check if it is SET msg (state machine)
+                else { //Received REJ frame. Need to resend I Frame (flag = 1).
+                    flag = true;
+                    alarm_counter = 0;
+                    stm.current_state = START; //Restart state machine
+                }
 
-            if (stm.current_state == STOP) {
                 printf("Received RR message.\n");
                 llink->sequenceNumber = ~llink->sequenceNumber; // 0 or 1
 
@@ -257,7 +257,7 @@ int read_info_frame(int fd, unsigned char** data_field) {
     printf("Sent ACK message.\n");
 
     int length = byte_destuffing(frame, counter, data_field);
-    
+
     return length;
 }
 
@@ -319,7 +319,6 @@ int establish_connection(char* port, enum Status status) {
     char buf[5];
 
     if (status == TRANSMITTER) {
-
         // Set alarm handler
         action.sa_handler = &alarm_handler;
         sigemptyset(&action.sa_mask);
@@ -367,6 +366,7 @@ int establish_connection(char* port, enum Status status) {
             }
 
             if (receivedUA) {
+                alarm(0);
                 printf("Received UA message.\n");
                 printf("Established connection\n");
                 break; // Read successfully UA msg
@@ -408,7 +408,6 @@ int establish_connection(char* port, enum Status status) {
         }
 
         printf("Sent UA message.\n");
-
         printf("Established connection\n");
     }
 

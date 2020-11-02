@@ -22,7 +22,7 @@ typedef struct {
 
 applicationLayer* app;
 
-void file_transmission();
+int file_transmission();
 
 int llopen(char* port, enum Status status); //TODO: porta devia ser int ???
 int llwrite(int fd, unsigned char* buffer, int length);

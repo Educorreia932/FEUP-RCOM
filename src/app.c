@@ -106,7 +106,7 @@ int llread(int fd, unsigned char** buffer) {
     return length;
 }
 
-void file_transmission() {
+int file_transmission() {
     // Send control packets and split the file in data packets to send them
     if (app->status == TRANSMITTER) {
         // Start packet
@@ -185,7 +185,7 @@ void file_transmission() {
 
                     int N = buffer[1]; // Sequence number
 
-                    if (N == app->sequence_number)
+                    if (N > app->sequence_number)
                         break;
 
                     fwrite(buffer + 4, 1, L, fp);
@@ -193,10 +193,12 @@ void file_transmission() {
 
                     break;
 
-                case end: // TODO: Ler packet
+                case end: // TODO: Ler packet?
                     transmission_ended = true;
                     break;
             }
         }
     }
+
+    return 0;
 }
