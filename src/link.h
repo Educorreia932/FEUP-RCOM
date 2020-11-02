@@ -12,7 +12,8 @@
 #include <termios.h>
 #include <unistd.h>
 
-#define SEQUENCE_MASK 0x40
+#define SEQUENCE_MASK_S 0x40
+#define SEQUENCE_MASK_R 0x80
 
 typedef struct {
     int baudrate;                  /* Velocidade de transmissão */

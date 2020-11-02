@@ -96,48 +96,53 @@ int byte_destuffing(unsigned char* packet, int length, unsigned char** frame) {
 // Information Frames
 
 int create_information_frame(unsigned char* packet, int length, unsigned char** frame) {
-    unsigned char BCC_2 = packet[4];
+    unsigned char* stuffed_bcc, *stuffed_data;
+    unsigned char BCC_2 = packet[0];
 
-    for (int i = 5; i < length; i++)
+    for (int i = 1; i < length; i++)
         BCC_2 ^= packet[i];
 
-    unsigned char* stuffed;
-    int new_length = byte_stuffing(packet, length, &stuffed); // Byte-stuff packet
+    int bcc_length = byte_stuffing(&BCC_2, 1, &stuffed_bcc); // Byte-stuff BCC_2
+    int new_length = byte_stuffing(packet, length, &stuffed_data); // Byte-stuff packet
 
-    *frame = (unsigned char*) malloc(new_length + 6); //TODO: check size after stuffing, cant' exceed MAX_SIZE
+    *frame = (unsigned char*) malloc(new_length + 5 + bcc_length); //TODO: check size after stuffing, cant' exceed MAX_SIZE
 
     (*frame)[0] = FLAG;                                  // F
     (*frame)[1] = A_EM_CMD;                              // A
-    (*frame)[2] = llink->sequenceNumber & SEQUENCE_MASK; // N(s) place 0S000000 C
+    (*frame)[2] = llink->sequenceNumber & SEQUENCE_MASK_S; // N(s) place 0S000000 C
     (*frame)[3] = A_EM_CMD ^ (*frame)[2];                // BCC_1
 
-    memcpy(*frame + 4, stuffed, new_length);
-    free(stuffed);
+    memcpy(*frame + 4, stuffed_data, new_length);
 
     new_length += 4;
 
-    int n = byte_stuffing(&BCC_2, 1, &stuffed); // Byte-stuff BCC_2
-    memcpy(*frame + new_length, stuffed, n);    // BCC_2
+    memcpy(*frame + new_length, stuffed_bcc, bcc_length);    // BCC_2
+
+    new_length += bcc_length;
 
     (*frame)[new_length++] = FLAG;
+
+    free(stuffed_bcc);
+    free(stuffed_data);
 
     return new_length;
 }
 
 int write_info_frame(int fd, unsigned char* packet, int length) {
     unsigned char* frame;
+    bool bcc_success = true;
+    unsigned char bcc_result;
+    char C;
 
     // Prepare frame to send
     length = create_information_frame(packet, length, &frame);
 
     char buffer[1];
-    char frame_type; // RR or REJ
 
     // Start state machine
     struct state_machine stm;
     stm.current_state = START;
     stm.status = TRANSMITTER;
-    stm.sequence_number = &llink->sequenceNumber;
 
     alarm_counter = 0;
     flag = true;
@@ -149,9 +154,7 @@ int write_info_frame(int fd, unsigned char* packet, int length) {
             flag = false;
 
             for (int i = 0; i < length; i++) {
-                n = write(fd, frame, 1); // Sends I Frame
-
-                frame++;
+                n = write(fd, frame + i, 1); // Sends I Frame
 
                 if (n == -1) {
                     perror("Failed to send information Frame message.");
@@ -174,29 +177,42 @@ int write_info_frame(int fd, unsigned char* packet, int length) {
         else {
             change_state(&stm, buffer[0]);
 
-            if (stm.current_state == C_RR_RCV) // RR frame
-                frame_type = C_RR_RCV;
+            switch (stm.current_state) {
+                case A_ANSWER_RCV:
+                    bcc_result = buffer[0];
 
-            else if (stm.current_state == C_REJ_RCV) // REJ frame
-                frame_type = C_REJ_RCV;
-
-            else if (stm.current_state == STOP) { // Read frame successfuly
-                // Check frame type (RR or REJ)
-                if (frame_type == C_RR_RCV) {
-                    alarm(0);
                     break;
-                }      
 
-                else { //Received REJ frame. Need to resend I Frame (flag = 1).
-                    flag = true;
-                    alarm_counter = 0;
-                    stm.current_state = START; //Restart state machine
-                }
+                case C_RCV:
+                    bcc_result ^= buffer[0];
+                    C = buffer[0];
 
-                printf("Received RR message.\n");
-                llink->sequenceNumber = ~llink->sequenceNumber; // 0 or 1
+                    break;
 
-                break;
+                case BCC_1_RCV:
+                    if (bcc_result != buffer[0])
+                        bcc_success = false;
+
+                    break;
+                    
+                case STOP:
+                    // Check frame type (RR or REJ)
+                    if ((C == C_RR || C == (C_RR & SEQUENCE_MASK_R)) && bcc_success) {
+                        printf("Received RR message.\n");
+                        alarm(0);
+                        llink->sequenceNumber = ~llink->sequenceNumber; // 0 or 1
+                        
+                        return n;
+                    }
+
+                    else { // Received REJ frame. Need to resend I Frame (flag = 1).
+                        printf("Received REJ message.\n");
+                        flag = true;
+                        alarm_counter = 0;
+                        stm.current_state = START; //Restart state machine
+                    }
+
+                    
             }
         }
     }
@@ -204,16 +220,18 @@ int write_info_frame(int fd, unsigned char* packet, int length) {
     // free(frame);
 
     if (alarm_counter == llink->numTransmissions) {
-        perror("Failed receive ACK.\n");
+        perror("Failed to receive ack.\n");
         return -1;
     }
 
-    return n;
+    return -1;
 }
 
 int read_info_frame(int fd, unsigned char** data_field) {
-    int counter = 0;
+    int counter = 0, length;
     char buffer[1];
+    bool bcc_success = true, discard = false;
+    unsigned char bcc_result;
 
     bool received_info = false;
 
@@ -221,7 +239,6 @@ int read_info_frame(int fd, unsigned char** data_field) {
 
     stm.status = RECEIVER;
     stm.current_state = START;
-    stm.sequence_number = &llink->sequenceNumber;
 
     unsigned char frame[MAX_SIZE];
 
@@ -235,28 +252,80 @@ int read_info_frame(int fd, unsigned char** data_field) {
             if (stm.current_state == START)
                 counter = 0;
 
-            change_state(&stm, buffer[0]); // Check if it is SET msg (state machine)
+            change_state(&stm, buffer[0]);
 
-            if (stm.current_state == D_RCV) {
-                frame[counter] = buffer[0];
-                counter++;
+            switch (stm.current_state) {
+                case A_CMD_RCV:
+                    bcc_result = buffer[0];
+
+                    break;
+
+                case C_I_RCV:
+                    if (buffer[0] != (llink->sequenceNumber && SEQUENCE_MASK_S))
+                        discard = true;
+
+                    else
+                        llink->sequenceNumber = ~llink->sequenceNumber;
+
+                case C_RCV:
+                    bcc_result ^= buffer[0];
+
+                    break;
+
+                case BCC_1_RCV:
+                    if (bcc_result != buffer[0])
+                        bcc_success = false;
+
+                    break;
+
+                case D_RCV: // Store the data field and BCC_2
+                    frame[counter] = buffer[0];
+                    counter++;
+
+                    break;
+
+                case STOP:
+                    length = byte_destuffing(frame, counter, data_field);
+
+                    bcc_result = (*data_field)[0];
+
+                    for (int i = 1; i < length - 1; i++)
+                        bcc_result ^= (*data_field)[i];
+
+                    if (bcc_result != (*data_field)[length - 1])
+                        bcc_success = false;
+
+                    printf("BCC %x %x\n", bcc_result, (*data_field)[length - 1]);
+
+                    int n;
+
+                    if (bcc_success) {
+                        printf("Sent RR message.\n");
+                        n = write_supervision_frame(fd, A_RC_RESP, C_RR | (llink->sequenceNumber && SEQUENCE_MASK_R));
+                        received_info = true;
+                    }
+
+                    else {
+                        printf("Sent REJ message.\n");
+                        n = write_supervision_frame(fd, A_RC_RESP, C_REJ | (llink->sequenceNumber && SEQUENCE_MASK_R));
+                        stm.current_state = START;
+
+                        memset(frame, 0, counter); // Clean up the frame
+                        counter = 0;
+                    }
+
+                    if (n < 0) {
+                        perror("Failed to send acknowledgement message.");
+                        exit(1);
+                    }
+
+                    break;
             }
-
-            if (stm.current_state == STOP)
-                received_info = true;
         }
     }
 
-    int n = write_supervision_frame(fd, A_RC_RESP, C_RR);
-
-    if (n < 0) {
-        perror("Failed to send ACK message.");
-        exit(1);
-    }
-
-    printf("Sent ACK message.\n");
-
-    int length = byte_destuffing(frame, counter, data_field);
+    if (discard)
+        return -1;
 
     return length;
 }

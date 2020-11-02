@@ -164,6 +164,9 @@ int file_transmission() {
             unsigned char* buffer;
             int length = llread(app->fileDescriptor, &buffer);
 
+            if (length == -1)
+                continue;
+
             switch (buffer[0]) {
                 case start:
                     L1 = buffer[2];

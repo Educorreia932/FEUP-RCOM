@@ -15,6 +15,10 @@
 #define C_REJ 0x01
 #define C_I 0x40 // Change to include number of sequence
 
+#define NS_1 0x40
+#define NS_2 0x00
+
+
 #define MAX_SIZE 65343
 
 enum state {
@@ -22,14 +26,9 @@ enum state {
     FLAG_RCV,
     A_CMD_RCV,
     A_ANSWER_RCV,
-    C_CMD_RCV,
-    C_ANSWER_RCV,
+    C_RCV,
     C_I_RCV,
-    C_RR_RCV,
-    C_REJ_RCV,
-    BCC_0_RCV,
     BCC_1_RCV,
-    BCC_2_RCV,
     D_RCV,
     STOP
 };
@@ -42,9 +41,6 @@ enum Status {
 struct state_machine {
     int current_state;
     enum Status status; /* TRANSMITTER | RECEIVER */
-    unsigned int* sequence_number;
-    char xor_result;
-    char xor_byte;
 };
 
 void change_state(struct state_machine* stm, char field);

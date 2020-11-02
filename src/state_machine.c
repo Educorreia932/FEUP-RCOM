@@ -2,8 +2,6 @@
 #include <stdio.h>
 
 void change_state(struct state_machine* stm, char field) {
-    // printf("State %d\n", stm->current_state);
-    
     switch (stm->current_state) {
         case START:
             if (field == FLAG) 
@@ -12,8 +10,6 @@ void change_state(struct state_machine* stm, char field) {
             break;
 
         case FLAG_RCV:
-            stm->xor_result = field;
-
             if (stm->status == RECEIVER) {
                 if (field == A_EM_CMD)
                     stm->current_state = A_CMD_RCV;
@@ -39,12 +35,10 @@ void change_state(struct state_machine* stm, char field) {
             break;
 
         case A_CMD_RCV:
-            stm->xor_result ^= field;
-
             if (field == C_SET || field == C_DISC)
-                stm->current_state = C_CMD_RCV;
+                stm->current_state = C_RCV;
 
-            else if (1)
+            else if (field == NS_1 || field == NS_2)
                 stm->current_state = C_I_RCV;
 
             else
@@ -53,29 +47,8 @@ void change_state(struct state_machine* stm, char field) {
             break;
 
         case A_ANSWER_RCV:
-            stm->xor_result ^= field;
-
             if (field == C_RR || field == C_REJ || field == C_UA)
-                stm->current_state = C_ANSWER_RCV;
-
-            else
-                stm->current_state = START;
-
-            break;
-
-        case C_CMD_RCV:
-        case C_ANSWER_RCV:
-            if (field == stm->xor_result)
-                stm->current_state = BCC_0_RCV;
-
-            else
-                stm->current_state = START;
-
-            break;
-
-        case BCC_0_RCV:
-            if (field == FLAG)
-                stm->current_state = STOP;
+                stm->current_state = C_RCV;
 
             else
                 stm->current_state = START;
@@ -83,25 +56,22 @@ void change_state(struct state_machine* stm, char field) {
             break;
 
         case C_I_RCV:
-            // TODO: Check BCC
-            if (1)
-                stm->current_state = BCC_1_RCV;
+        case C_RCV:
+            stm->current_state = BCC_1_RCV;
 
-            else
-                stm->current_state = START;
-           
             break;
 
         case BCC_1_RCV:
-            if (1)
-                stm->current_state = D_RCV;
+            if (field == FLAG)
+                stm->current_state = STOP;
 
+            // Otherwise, we're receiving data
             else
-                stm->current_state = START;
+                stm->current_state = D_RCV;
 
             break;
 
-        case D_RCV: // TODO: last byte will be BCC2
+        case D_RCV:
             if (field == FLAG)
                 stm->current_state = STOP;
 
