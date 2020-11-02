@@ -9,20 +9,21 @@
 FILE* fp;
 struct stat st;
 
-int control_packet(enum Control status, char* filename, int filesize, char** packet) {
+int control_packet(enum Control status, char* filename, int filesize, unsigned char** packet) {
     int L1 = ceil(log(filesize) / log(2) / 8);
     size_t L2 = strlen(filename);
 
     int packet_size = 3 + L1 + 2 + L2; // Number of bytes needed for packet
 
     *packet = NULL;
-    *packet = (char*) malloc(packet_size);
+    *packet = (unsigned char*) malloc(packet_size);
 
     (*packet)[0] = status;     // C
     (*packet)[1] = T_FILESIZE; // T1
     (*packet)[2] = L1;         // L1
 
     int c;
+
     for (c = 3; c < L1 + 3; c++)
         (*packet)[c] = (filesize >> 8 * (c - 3)) & (0xFF); // V1
 
@@ -36,14 +37,14 @@ int control_packet(enum Control status, char* filename, int filesize, char** pac
     return packet_size;
 }
 
-int data_packet(char* data_field, int packet_size, char** packet) {
+int data_packet(unsigned char* data_field, int packet_size, unsigned char** packet) {
     int L1 = packet_size & 0xFF;
     int L2 = packet_size >> 8;
 
     int length = 4 + packet_size;
 
     *packet = NULL;
-    *packet = (char*) malloc(length);
+    *packet = (unsigned char*) malloc(length);
 
     (*packet)[0] = data;
     (*packet)[1] = 0; // TODO: Change later
@@ -94,11 +95,11 @@ int llclose(int fd) {
     return close(fd);
 }
 
-int llwrite(int fd, char* buffer, int length) {
+int llwrite(int fd, unsigned char* buffer, int length) {
     return write_info_frame(fd, buffer, length);
 }
 
-int llread(int fd, char** buffer) {
+int llread(int fd, unsigned char** buffer) {
     int length = read_info_frame(fd, buffer);
 
     return length;
@@ -110,7 +111,7 @@ void file_transmission() {
         // Start packet
         st = open_file(app->filename); // Open file to send and send control packet
 
-        char* packet;
+        unsigned char* packet;
         int length = control_packet(start, app->filename, st.st_size, &packet);
 
         //for (int i = 0; i < length; i++)
@@ -128,7 +129,7 @@ void file_transmission() {
 
         // Data packets
         for (int i = 0; i < num_chunks; i++) {
-            char data_field[CHUNK_SIZE];
+            unsigned char data_field[CHUNK_SIZE];
 
             size_t length = fread(data_field, 1, CHUNK_SIZE, fp);
 
@@ -171,7 +172,7 @@ void file_transmission() {
                     int V2_index = L2_index + 1;
 
                     char* filename = (char*) malloc(L2);
-                    memcpy(filename, V2_index, L2);
+                    memcpy(filename, buffer + V2_index, L2);
 
                     st = open_file("../files/pinguim2.gif"); // Open file to send and send control packet
 
@@ -192,4 +193,3 @@ void file_transmission() {
         }
     }
 }
-

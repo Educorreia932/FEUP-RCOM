@@ -30,7 +30,7 @@ int write_supervision_frame(int fd, char a, char c) {
 
 // Stuffing
 
-int byte_stuffing(char* packet, int length, char** frame) {
+int byte_stuffing(unsigned char* packet, int length, unsigned char** frame) {
     int counter = length;
 
     // Calculate size of data to allocate the necessary space
@@ -40,7 +40,7 @@ int byte_stuffing(char* packet, int length, char** frame) {
     }
 
     *frame = NULL;
-    *frame = (char*) malloc(counter);
+    *frame = (unsigned char*) malloc(counter);
     int index = 0;
 
     // Fill the frame, replacing flage and escape occurrences
@@ -64,7 +64,7 @@ int byte_stuffing(char* packet, int length, char** frame) {
     return counter;
 }
 
-int byte_destuffing(char* packet, int length, char** frame) {
+int byte_destuffing(unsigned char* packet, int length, unsigned char** frame) {
     int counter = length;
 
     // Calculate size of data to allocate the necessary space
@@ -76,7 +76,7 @@ int byte_destuffing(char* packet, int length, char** frame) {
     }
 
     *frame = NULL;
-    *frame = (char*) malloc(counter);
+    *frame = (unsigned char*) malloc(counter);
     int index = 0;
 
     // Fill the frame, replacing escaped occurrences
@@ -95,16 +95,16 @@ int byte_destuffing(char* packet, int length, char** frame) {
 
 // Information Frames
 
-int create_information_frame(char* packet, int length, char** frame) {
+int create_information_frame(unsigned char* packet, int length, unsigned char** frame) {
     char BCC_2 = packet[4];
 
     for (int i = 5; i < length; i++)
         BCC_2 ^= packet[i];
 
-    char* stuffed;
+    unsigned char* stuffed;
     int new_length = byte_stuffing(packet, length, &stuffed); // Byte-stuff packet
 
-    *frame = (char*) malloc(new_length + 6); //TODO: check size after stuffing, cant' exceed MAX_SIZE
+    *frame = (unsigned char*) malloc(new_length + 6); //TODO: check size after stuffing, cant' exceed MAX_SIZE
 
     (*frame)[0] = FLAG;                                  // F
     (*frame)[1] = A_EM_CMD;                              // A
@@ -121,8 +121,8 @@ int create_information_frame(char* packet, int length, char** frame) {
     return new_length;
 }
 
-int write_info_frame(int fd, char* packet, int length) {
-    char* frame;
+int write_info_frame(int fd, unsigned char* packet, int length) {
+    unsigned char* frame;
 
     // Prepare frame to send
     length = create_information_frame(packet, length, &frame);
@@ -208,7 +208,7 @@ int write_info_frame(int fd, char* packet, int length) {
     return n;
 }
 
-int read_info_frame(int fd, char** data_field) {
+int read_info_frame(int fd, unsigned char** data_field) {
     int counter = 0;
     char buffer[1];
 
@@ -220,7 +220,7 @@ int read_info_frame(int fd, char** data_field) {
     stm.current_state = START;
     stm.sequence_number = &llink->sequenceNumber;
 
-    char frame[MAX_SIZE];
+    unsigned char frame[MAX_SIZE];
 
     while (!received_info) {
         if (read(fd, buffer, 1) < 0) {

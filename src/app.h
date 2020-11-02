@@ -24,5 +24,5 @@ applicationLayer* app;
 void file_transmission();
 
 int llopen(char* port, enum Status status); //TODO: porta devia ser int ???
-int llwrite(int fd, char* buffer, int length);
+int llwrite(int fd, unsigned char* buffer, int length);
 int llclose(int fd);
