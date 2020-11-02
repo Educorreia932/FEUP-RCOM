@@ -47,7 +47,7 @@ int data_packet(unsigned char* data_field, int packet_size, unsigned char** pack
     *packet = (unsigned char*) malloc(length);
 
     (*packet)[0] = data;
-    (*packet)[1] = 0; // TODO: Change later
+    (*packet)[1] = app->sequence_number;
     (*packet)[2] = L2;
     (*packet)[3] = L1;
 
@@ -82,6 +82,7 @@ struct stat open_file(char* filename) {
 int llopen(char* port, enum Status status) {
     int fd = establish_connection(port, status);
     app->fileDescriptor = fd;
+    app->sequence_number = 0;
 
     return fd;
 }
@@ -114,9 +115,6 @@ void file_transmission() {
         unsigned char* packet;
         int length = control_packet(start, app->filename, st.st_size, &packet);
 
-        //for (int i = 0; i < length; i++)
-        // printf("%x\n", packet[i]);
-
         int n = llwrite(app->fileDescriptor, packet, length);
         free(packet);
 
@@ -137,6 +135,8 @@ void file_transmission() {
 
             n = llwrite(app->fileDescriptor, packet, packet_size);
             free(packet);
+
+            app->sequence_number = (app->sequence_number + 1) % 255;
 
             if (n < 0) {
                 perror("Failed to send data packet.\n");
@@ -183,7 +183,14 @@ void file_transmission() {
                     L2 = buffer[2];
                     L = 256 * L2 + L1;
 
+                    int N = buffer[1]; // Sequence number
+
+                    if (N == app->sequence_number)
+                        break;
+
                     fwrite(buffer + 4, 1, L, fp);
+                    app->sequence_number = (app->sequence_number + 1) % 255;
+
                     break;
 
                 case end: // TODO: Ler packet

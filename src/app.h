@@ -17,6 +17,7 @@ typedef struct {
     int fileDescriptor; /* Descritor correspondente à porta série */
     enum Status status; /* TRANSMITTER | RECEIVER */
     char filename[256];
+    int sequence_number;
 } applicationLayer;
 
 applicationLayer* app;

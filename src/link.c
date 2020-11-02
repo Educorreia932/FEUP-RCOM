@@ -96,7 +96,7 @@ int byte_destuffing(unsigned char* packet, int length, unsigned char** frame) {
 // Information Frames
 
 int create_information_frame(unsigned char* packet, int length, unsigned char** frame) {
-    char BCC_2 = packet[4];
+    unsigned char BCC_2 = packet[4];
 
     for (int i = 5; i < length; i++)
         BCC_2 ^= packet[i];
@@ -113,9 +113,12 @@ int create_information_frame(unsigned char* packet, int length, unsigned char** 
 
     memcpy(*frame + 4, stuffed, new_length);
     free(stuffed);
+
     new_length += 4;
 
-    (*frame)[new_length++] = 0; // BCC_2 TODO: STUFF IT DIABO SATANÁS BEELZUB PROTEGE-NOS
+    int n = byte_stuffing(&BCC_2, 1, &stuffed); // Byte-stuff BCC_2
+    memcpy(*frame + new_length, stuffed, n); // BCC_2
+
     (*frame)[new_length++] = FLAG;
 
     return new_length;
