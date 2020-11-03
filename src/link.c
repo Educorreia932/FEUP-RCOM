@@ -96,27 +96,27 @@ int byte_destuffing(unsigned char* packet, int length, unsigned char** frame) {
 // Information Frames
 
 int create_information_frame(unsigned char* packet, int length, unsigned char** frame) {
-    unsigned char* stuffed_bcc, *stuffed_data;
+    unsigned char *stuffed_bcc, *stuffed_data;
     unsigned char BCC_2 = packet[0];
 
     for (int i = 1; i < length; i++)
         BCC_2 ^= packet[i];
 
-    int bcc_length = byte_stuffing(&BCC_2, 1, &stuffed_bcc); // Byte-stuff BCC_2
+    int bcc_length = byte_stuffing(&BCC_2, 1, &stuffed_bcc);       // Byte-stuff BCC_2
     int new_length = byte_stuffing(packet, length, &stuffed_data); // Byte-stuff packet
 
     *frame = (unsigned char*) malloc(new_length + 5 + bcc_length); //TODO: check size after stuffing, cant' exceed MAX_SIZE
 
-    (*frame)[0] = FLAG;                                  // F
-    (*frame)[1] = A_EM_CMD;                              // A
+    (*frame)[0] = FLAG;                                    // F
+    (*frame)[1] = A_EM_CMD;                                // A
     (*frame)[2] = llink->sequenceNumber & SEQUENCE_MASK_S; // N(s) place 0S000000 C
-    (*frame)[3] = A_EM_CMD ^ (*frame)[2];                // BCC_1
+    (*frame)[3] = A_EM_CMD ^ (*frame)[2];                  // BCC_1
 
     memcpy(*frame + 4, stuffed_data, new_length);
 
     new_length += 4;
 
-    memcpy(*frame + new_length, stuffed_bcc, bcc_length);    // BCC_2
+    memcpy(*frame + new_length, stuffed_bcc, bcc_length); // BCC_2
 
     new_length += bcc_length;
 
@@ -194,14 +194,14 @@ int write_info_frame(int fd, unsigned char* packet, int length) {
                         bcc_success = false;
 
                     break;
-                    
+
                 case STOP:
                     // Check frame type (RR or REJ)
                     if ((C == C_RR || C == (C_RR & SEQUENCE_MASK_R)) && bcc_success) {
                         printf("Received RR message.\n");
                         alarm(0);
                         llink->sequenceNumber = ~llink->sequenceNumber; // 0 or 1
-                        
+
                         return n;
                     }
 
@@ -211,8 +211,6 @@ int write_info_frame(int fd, unsigned char* packet, int length) {
                         alarm_counter = 0;
                         stm.current_state = START; //Restart state machine
                     }
-
-                    
             }
         }
     }
@@ -261,7 +259,9 @@ int read_info_frame(int fd, unsigned char** data_field) {
                     break;
 
                 case C_I_RCV:
-                    if (buffer[0] != (llink->sequenceNumber && SEQUENCE_MASK_S))
+                    printf("Sequence number %x\n", llink->sequenceNumber);
+
+                    if (buffer[0] != (llink->sequenceNumber & SEQUENCE_MASK_S))
                         discard = true;
 
                     else
@@ -294,8 +294,6 @@ int read_info_frame(int fd, unsigned char** data_field) {
 
                     if (bcc_result != (*data_field)[length - 1])
                         bcc_success = false;
-
-                    printf("BCC %x %x\n", bcc_result, (*data_field)[length - 1]);
 
                     int n;
 
