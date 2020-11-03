@@ -93,6 +93,8 @@ int llclose(int fd) {
         exit(1);
     }
 
+    finish_connection(fd, app->status);
+
     return close(fd);
 }
 

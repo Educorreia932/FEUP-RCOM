@@ -153,13 +153,11 @@ int write_info_frame(int fd, unsigned char* packet, int length) {
             alarm(llink->timeout); // Activactes alarm
             flag = false;
 
-            for (int i = 0; i < length; i++) {
-                n = write(fd, frame + i, 1); // Sends I Frame
+            n = write(fd, frame, length); // Sends I Frame
 
-                if (n == -1) {
-                    perror("Failed to send information Frame message.");
-                    return -1;
-                }
+            if (n == -1) {
+                perror("Failed to send information frame message.");
+                return -1;
             }
 
             printf("Sent information frame. \n");
@@ -218,7 +216,7 @@ int write_info_frame(int fd, unsigned char* packet, int length) {
     // free(frame);
 
     if (alarm_counter == llink->numTransmissions) {
-        perror("Failed to receive ack.\n");
+        perror("Failed to receive acknowledgement.\n");
         return -1;
     }
 
@@ -259,8 +257,6 @@ int read_info_frame(int fd, unsigned char** data_field) {
                     break;
 
                 case C_I_RCV:
-                    printf("Sequence number %x\n", llink->sequenceNumber);
-
                     if (buffer[0] != (llink->sequenceNumber & SEQUENCE_MASK_S))
                         discard = true;
 
@@ -298,7 +294,9 @@ int read_info_frame(int fd, unsigned char** data_field) {
                     int n;
 
                     if (bcc_success) {
+                        printf("Received information frame.\n");
                         printf("Sent RR message.\n");
+
                         n = write_supervision_frame(fd, A_RC_RESP, C_RR | (llink->sequenceNumber && SEQUENCE_MASK_R));
                         received_info = true;
                     }
@@ -321,6 +319,7 @@ int read_info_frame(int fd, unsigned char** data_field) {
             }
         }
     }
+
 
     if (discard)
         return -1;
@@ -479,4 +478,129 @@ int establish_connection(char* port, enum Status status) {
     }
 
     return fd;
+}
+
+int finish_connection(int fd, enum Status status) {
+    alarm_counter = 0;
+    flag = true;
+
+    // Set state machine
+    struct state_machine stm;
+
+    stm.status = status;
+    stm.current_state = START;
+
+    char buf[5];
+
+    if (status == TRANSMITTER) {
+        bool receivedDISC = false;
+
+        // Tries to send DISC Message
+        while (alarm_counter < llink->numTransmissions) {
+            if (flag) {
+                alarm(llink->timeout); // Activactes alarm
+                flag = false;
+
+                int n = write_supervision_frame(fd, A_EM_CMD, C_DISC); // Sends DISC message
+
+                if (n == -1) {
+                    perror("Failed to send DISC message.");
+                    exit(1);
+                }
+
+                printf("Sent DISC message. \n");
+            }
+
+            // Tries to receive DISC message
+            if (read(fd, buf, 1) < 0) {
+                // Read was not interrupted by the alarm, so it wasn't the cause for errno
+                if (errno != EINTR) {
+                    perror("Failed to read.");
+                    exit(1);
+                }
+            }
+
+            // No error occured
+            else {
+                change_state(&stm, buf[0]); // Check if it is UA msg (state machine)
+
+                if (stm.current_state == STOP)
+                    receivedDISC = true;
+            }
+
+            if (receivedDISC) {
+                alarm(0);
+                printf("Received DISC message.\n");
+
+                int n = write_supervision_frame(fd, A_EM_CMD, C_UA); // Sends UA message
+
+                if (n == -1) {
+                    perror("Failed to send UA message.");
+                    exit(1);
+                }
+
+                printf("Sent UA message. \n");
+                printf("Finished connection\n");
+
+                break;
+            }
+        }
+
+        if (alarm_counter == llink->numTransmissions) {
+            perror("Failed to establish connection.\n");
+            exit(1);
+        }
+
+    }
+
+    else if (status == RECEIVER) {
+        bool receivedDISC = false;
+        bool receivedUA = false;
+
+        while (!receivedDISC) {
+            // Tries to receive DISC message
+            if (read(fd, buf, 1) < 0) {
+                perror("Failed to read.");
+                exit(1);
+            }
+
+            else {
+                change_state(&stm, buf[0]); // Check if it is DISC msg (state machine)
+
+                if (stm.current_state == STOP)
+                    receivedDISC = true;
+            }
+        }
+
+        printf("Received DISC message.\n");
+
+        int n = write_supervision_frame(fd, A_RC_CMD, C_DISC); // Sends UA message
+
+        if (n == -1) {
+            perror("Failed to send DISC message.");
+            exit(1);
+        }
+
+        printf("Sent DISC message.\n");
+
+        while (!receivedUA) {
+            // Tries to receive UA message
+            if (read(fd, buf, 1) < 0) {
+                perror("Failed to read.");
+                exit(1);
+            }
+
+            else {
+                change_state(&stm, buf[0]); // Check if it is UA msg (state machine)
+
+                if (stm.current_state == STOP)
+                    receivedUA = true;
+            }
+        }
+
+        printf("Received UA message.\n");
+        printf("Finished connection\n");
+    }
+
+    return 0;
 }

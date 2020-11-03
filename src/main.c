@@ -21,7 +21,7 @@ int main(int argc, char **argv) {
 
     file_transmission();
 
-    llclose(fd); // TODO: Check for errors
+    llclose(fd);
 
     return 0;
 }

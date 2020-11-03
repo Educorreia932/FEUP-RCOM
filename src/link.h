@@ -26,5 +26,6 @@ typedef struct {
 linkLayer* llink;
 
 int establish_connection(char* port, enum Status status);
+int finish_connection(int fd, enum Status status);
 int read_info_frame(int fd, unsigned char** data_field);
 int write_info_frame(int fd, unsigned char* packet, int length);
