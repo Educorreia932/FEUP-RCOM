@@ -1,5 +1,6 @@
 
 #include "app.h"
+#include "log.h"
 
 #include <math.h>
 #include <string.h>
@@ -125,7 +126,7 @@ int file_transmission() {
             exit(1);
         }
 
-        int num_chunks = ceil(st.st_size / (double) app->chunk_size);
+        int num_chunks = ceil(st.st_size / (double) app->chunk_size); // Calculate the number of chunks in which the file will be split
 
         // Data packets
         for (int i = 0; i < num_chunks; i++) {
@@ -133,7 +134,7 @@ int file_transmission() {
 
             size_t length = fread(data_field, 1, app->chunk_size, fp);
 
-            int packet_size = data_packet(data_field, length, &packet);
+            int packet_size = data_packet(data_field, length, &packet); // Read data chunk from file to send it in packet
 
             n = llwrite(app->fileDescriptor, packet, packet_size);
             free(packet);
@@ -204,6 +205,13 @@ int file_transmission() {
                     app->sequence_number = (app->sequence_number + 1) % 255;
                     memcpy(file_array + file_index, buffer + 4, L);
                     file_index += app->chunk_size;
+
+                    float progress = file_index / (float) filesize;
+
+                    if (progress > 1)
+                        progress = 1;
+
+                    progress_bar(progress);
 
                     break;
 
