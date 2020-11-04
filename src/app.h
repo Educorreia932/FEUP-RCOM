@@ -4,7 +4,7 @@
 #define T_FILESIZE 0x00 // T1
 #define T_FILENAME 0x01 // T2
 
-#define CHUNK_SIZE 131072
+#define MAX_CHUNK_SIZE 131072
 
 enum Control {
     data = 1,
@@ -18,6 +18,7 @@ typedef struct {
     enum Status status; /* TRANSMITTER | RECEIVER */
     char filename[256];
     int sequence_number;
+    int chunk_size;
 } applicationLayer;
 
 applicationLayer* app;

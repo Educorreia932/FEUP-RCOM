@@ -1,6 +1,8 @@
 #include "flags.h"
 
 void parse_flags(int argc, char** argv) {
+    app->chunk_size = MAX_CHUNK_SIZE;
+
     for (int i = 1; i < argc; i++) {
         if (!strcmp(argv[i], ""))
             continue;
@@ -35,5 +37,9 @@ void parse_flags(int argc, char** argv) {
         // File to transfer
         else if (!strcmp(argv[i], "-f") || !strcmp(argv[i], "--file"))
             strcpy(app->filename, argv[i + 1]);
+
+        // Chunk size
+        else if (!strcmp(argv[i], "--chunk_size"))
+            app->chunk_size = atoi(argv[i + 1]);
     }
 }

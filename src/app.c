@@ -125,13 +125,13 @@ int file_transmission() {
             exit(1);
         }
 
-        int num_chunks = ceil(st.st_size / (double) CHUNK_SIZE);
+        int num_chunks = ceil(st.st_size / (double) app->chunk_size);
 
         // Data packets
         for (int i = 0; i < num_chunks; i++) {
-            unsigned char data_field[CHUNK_SIZE];
+            unsigned char data_field[app->chunk_size];
 
-            size_t length = fread(data_field, 1, CHUNK_SIZE, fp);
+            size_t length = fread(data_field, 1, app->chunk_size, fp);
 
             int packet_size = data_packet(data_field, length, &packet);
 
