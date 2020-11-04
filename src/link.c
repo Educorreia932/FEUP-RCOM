@@ -1,4 +1,5 @@
 #include "link.h"
+
 #include <string.h>
 
 struct termios oldtio, newtio;
@@ -7,8 +8,6 @@ int fd;
 
 bool flag = true;
 int alarm_counter = 0;
-
-// TODO: Cleanup serial port with fflush when necessary
 
 void alarm_handler() {
     printf("Alarm # %d\n", alarm_counter);
@@ -133,6 +132,7 @@ int write_info_frame(int fd, unsigned char* packet, int length) {
     bool bcc_success = true;
     unsigned char bcc_result;
     char C;
+
 
     // Prepare frame to send
     length = create_information_frame(packet, length, &frame);

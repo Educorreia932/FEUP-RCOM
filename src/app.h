@@ -4,7 +4,7 @@
 #define T_FILESIZE 0x00 // T1
 #define T_FILENAME 0x01 // T2
 
-#define MAX_CHUNK_SIZE 131072
+#define MAX_CHUNK_SIZE 65536
 
 enum Control {
     data = 1,
