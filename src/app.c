@@ -161,6 +161,8 @@ int file_transmission() {
     else if (app->status == RECEIVER) {
         bool transmission_ended = false;
         int L1, L2, L;
+        unsigned char* file_array;
+        int filesize = 0;
 
         while (!transmission_ended) {
             unsigned char* buffer;
@@ -172,9 +174,14 @@ int file_transmission() {
             switch (buffer[0]) {
                 case start:
                     L1 = buffer[2];
-                    int L2_index = 4 + L1;
-                    L2 = buffer[L2_index]; // Skip 4 bytes (C, T1, L1 and T2) and V1 field (of size L1)
+                    int L2_index = 4 + L1; // Skip 4 bytes (C, T1, L1 and T2) and V1 field (of size L1)
+                    L2 = buffer[L2_index]; 
                     int V2_index = L2_index + 1;
+
+                    for (int i = 0; i < L1; i++)
+                        filesize += buffer[3 + i] * pow(256, i);
+
+                    file_array = (unsigned char*) malloc(filesize);
 
                     char* filename = (char*) malloc(L2);
                     memcpy(filename, buffer + V2_index, L2);
@@ -193,13 +200,16 @@ int file_transmission() {
                     if (N > app->sequence_number)
                         break;
 
-                    fwrite(buffer + 4, 1, L, fp);
                     app->sequence_number = (app->sequence_number + 1) % 255;
+                    memcpy(file_array, buffer + 4, L);
 
                     break;
 
-                case end: // TODO: Ler packet?
+                case end: // TODO: Verify if everything was done correctly
+                    fwrite(file_array, 1, filesize, fp);
+                    
                     transmission_ended = true;
+
                     break;
             }
         }
