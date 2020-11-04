@@ -311,6 +311,7 @@ int read_info_frame(int fd, unsigned char** data_field) {
 
                         memset(frame, 0, counter); // Clean up the frame
                         counter = 0;
+                        bcc_success = true;
                     }
 
                     if (n < 0) {
