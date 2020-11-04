@@ -10,7 +10,10 @@ void change_state(struct state_machine* stm, char field) {
             break;
 
         case FLAG_RCV:
-            if (stm->status == RECEIVER) {
+            if(field == FLAG){
+                //nothing
+            }
+            else if (stm->status == RECEIVER) {
                 if (field == A_EM_CMD)
                     stm->current_state = A_CMD_RCV;
 
