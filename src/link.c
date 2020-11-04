@@ -8,8 +8,6 @@ int fd;
 bool flag = true;
 int alarm_counter = 0;
 
-// TODO: Cleanup serial port with fflush when necessary
-
 void alarm_handler() {
     printf("Alarm # %d\n", alarm_counter);
     flag = true;

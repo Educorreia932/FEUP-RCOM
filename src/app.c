@@ -186,7 +186,8 @@ int file_transmission() {
                     char* filename = (char*) malloc(L2);
                     memcpy(filename, buffer + V2_index, L2);
 
-                    st = open_file(filename); // Open file to send and send control packet
+                    // st = open_file(filename); // Open file to send and send control packet
+                    st = open_file("../files/wallpaper2.jpg"); // Open file to send and send control packet
 
                     break;
 
