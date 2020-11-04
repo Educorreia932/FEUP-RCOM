@@ -224,6 +224,7 @@ int write_info_frame(int fd, unsigned char* packet, int length) {
 }
 
 int read_info_frame(int fd, unsigned char** data_field) {
+    bool changeNs = false;
     int counter = 0, length;
     char buffer[1];
     bool bcc_success = true, discard = false;
@@ -261,8 +262,7 @@ int read_info_frame(int fd, unsigned char** data_field) {
                         discard = true;
 
                     else
-                        llink->sequenceNumber = ~llink->sequenceNumber;
-
+                       changeNs = true;
                 case C_RCV:
                     bcc_result ^= buffer[0];
 
@@ -299,6 +299,8 @@ int read_info_frame(int fd, unsigned char** data_field) {
 
                         n = write_supervision_frame(fd, A_RC_RESP, C_RR | (llink->sequenceNumber && SEQUENCE_MASK_R));
                         received_info = true;
+                        if(changeNs)      llink->sequenceNumber = ~llink->sequenceNumber;
+                        changeNs = false;
                     }
 
                     else {
