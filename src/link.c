@@ -292,9 +292,10 @@ int read_info_frame(int fd, unsigned char** data_field) {
                         bcc_success = false;
 
                     int n;
+                    
+                    printf("Received information frame.\n");
 
                     if (bcc_success) {
-                        printf("Received information frame.\n");
                         printf("Sent RR message.\n");
 
                         n = write_supervision_frame(fd, A_RC_RESP, C_RR | (llink->sequenceNumber && SEQUENCE_MASK_R));
@@ -321,7 +322,6 @@ int read_info_frame(int fd, unsigned char** data_field) {
             }
         }
     }
-
 
     if (discard)
         return -1;
