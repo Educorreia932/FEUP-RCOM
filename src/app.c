@@ -162,7 +162,7 @@ int file_transmission() {
         bool transmission_ended = false;
         int L1, L2, L;
         unsigned char* file_array;
-        int filesize = 0;
+        int filesize = 0, file_index = 0;
 
         while (!transmission_ended) {
             unsigned char* buffer;
@@ -201,7 +201,8 @@ int file_transmission() {
                         break;
 
                     app->sequence_number = (app->sequence_number + 1) % 255;
-                    memcpy(file_array, buffer + 4, L);
+                    memcpy(file_array + file_index, buffer + 4, L);
+                    file_index += app->chunk_size;
 
                     break;
 
