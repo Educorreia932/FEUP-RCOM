@@ -1,123 +1,113 @@
 #include "link.h"
 
-#include <string.h>
-
 struct termios oldtio, newtio;
 struct sigaction action;
-int fd;
-
 bool flag = true;
-int alarm_counter = 0;
+int fd,  alarm_counter = 0;
 
-void alarm_handler() {
-    printf("Alarm # %d\n", alarm_counter);
-    flag = true;
-    alarm_counter++;
-}
-
-int write_supervision_frame(int fd, char a, char c) {
-    unsigned char buf[5];
-
-    buf[0] = FLAG;
-    buf[1] = a;
-    buf[2] = c;
-    buf[3] = a ^ c; // BCC
-    buf[4] = FLAG;
-
-    return write(fd, buf, 5);
-}
-
-// Stuffing
+void alarm_handler();
 
 int byte_stuffing(unsigned char* packet, int length, unsigned char** frame) {
     *frame = NULL;
     *frame = (unsigned char*) malloc(MAX_SIZE);
-    int index = 0;
 
+    int index = 0;
     // Fill the frame, replacing flage and escape occurrences
     for (int c = 0; c < length; c++) {
         if (packet[c] == FLAG) {
             (*frame)[index] = ESCAPE;
             (*frame)[++index] = FLAG_STUFF;
         }
-
         else if (packet[c] == ESCAPE) {
             (*frame)[index] = ESCAPE;
             (*frame)[++index] = ESCAPE_STUFF;
         }
-
-        else
-            (*frame)[index] = packet[c];
+        else (*frame)[index] = packet[c];
 
         index++;
     }
 
-    return index;
+    return index; // Return size of result
 }
 
 int byte_destuffing(unsigned char* packet, int length, unsigned char** frame) {
     *frame = NULL;
     *frame = (unsigned char*) malloc(MAX_SIZE);
-    int index = 0;
 
+    int index = 0;
     // Fill the frame, replacing escaped occurrences
     for (int c = 0; c < length; c++) {
-        if (packet[c] == ESCAPE)
-            (*frame)[index] = packet[++c] ^ 0x20;
-
-        else
-            (*frame)[index] = packet[c];
+        if (packet[c] == ESCAPE) (*frame)[index] = packet[++c] ^ 0x20;
+        else (*frame)[index] = packet[c];
 
         index++;
     }
 
-    return index;
+    return index; // Returns size of result 
 }
 
-// Information Frames
+/**
+ * Creates & sends a supervision frame.
+ */
+int write_supervision_frame(int fd, char a, char c) {
+    unsigned char buf[5];
 
+    buf[0] = FLAG; // F
+    buf[1] = a; // A
+    buf[2] = c; // C
+    buf[3] = a ^ c; // BCC
+    buf[4] = FLAG; // F
+
+    return write(fd, buf, 5);
+}
+
+/**
+ * Creates an information frame.
+ */
 int create_information_frame(unsigned char* packet, int length, unsigned char** frame) {
-    unsigned char *stuffed_bcc, *stuffed_data;
+    // Calculates BCC2
     unsigned char BCC_2 = packet[0];
-
     for (int i = 1; i < length; i++)
         BCC_2 ^= packet[i];
 
+    // Byte stufing
+    unsigned char *stuffed_bcc, *stuffed_data;
     int bcc_length = byte_stuffing(&BCC_2, 1, &stuffed_bcc);       // Byte-stuff BCC_2
     int new_length = byte_stuffing(packet, length, &stuffed_data); // Byte-stuff packet
 
+    // Allocs memory for frame
     *frame = (unsigned char*) malloc(new_length + 5 + bcc_length); //TODO: check size after stuffing, cant' exceed MAX_SIZE
-
+    
+    // Fills frame
     (*frame)[0] = FLAG;                                    // F
     (*frame)[1] = A_EM_CMD;                                // A
-    (*frame)[2] = llink->sequenceNumber & SEQUENCE_MASK_S; // N(s) place 0S000000 C
+    (*frame)[2] = llink->sequenceNumber & SEQUENCE_MASK_S; // Sequence number
     (*frame)[3] = A_EM_CMD ^ (*frame)[2];                  // BCC_1
-
-    memcpy(*frame + 4, stuffed_data, new_length);
-
-    new_length += 4;
-
+    memcpy(*frame + 4, stuffed_data, new_length);          // Stuffed Packets
+    
+    new_length += 4; // Updates length (4 bytes from F,A,Ns,BCC)
     memcpy(*frame + new_length, stuffed_bcc, bcc_length); // BCC_2
+    new_length += bcc_length; // Updates length (adds bcc 2 length)
 
-    new_length += bcc_length;
-
-    (*frame)[new_length++] = FLAG;
+    (*frame)[new_length++] = FLAG; // F
 
     free(stuffed_bcc);
     free(stuffed_data);
 
-    return new_length;
+    return new_length; // Returns length of result
 }
 
+/**
+ * Sends and information frame.
+ */
 int write_info_frame(int fd, unsigned char* packet, int length) {
+    // Prepares frame to send
     unsigned char* frame;
+    int frame_length = create_information_frame(packet, length, &frame);
+    
     bool bcc_success = true;
     unsigned char bcc_result;
     char C;
-
-
-    // Prepare frame to send
-    length = create_information_frame(packet, length, &frame);
 
     char buffer[1];
 
@@ -130,12 +120,13 @@ int write_info_frame(int fd, unsigned char* packet, int length) {
     flag = true;
     int n; // Written characters
 
+    // Writing Frame Loop
     while (alarm_counter < llink->numTransmissions) {
         if (flag) {
             alarm(llink->timeout); // Activactes alarm
             flag = false;
 
-            n = write(fd, frame, length); // Sends I Frame
+            n = write(fd, frame, frame_length); // Sends I Frame
 
             if (n == -1) {
                 perror("Failed to send information frame message.");
@@ -588,4 +579,13 @@ int finish_connection(int fd, enum Status status) {
     }
 
     return 0;
+}
+
+/**
+ * Handles an alarm signal.
+ */
+void alarm_handler() {
+    printf("Alarm # %d\n", alarm_counter);
+    flag = true; // Resets flag so it tries again
+    alarm_counter++; 
 }

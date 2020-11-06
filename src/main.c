@@ -1,7 +1,3 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <termios.h>
-
 #include "app.h"
 
 void parse_flags(int argc, char *argv[]);

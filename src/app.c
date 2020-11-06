@@ -125,7 +125,6 @@ int llclose(int fd) {
     return close(fd);
 }
 
-
 /**
  * Sends packets to link layer.
  */
