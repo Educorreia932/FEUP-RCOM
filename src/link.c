@@ -30,16 +30,8 @@ int write_supervision_frame(int fd, char a, char c) {
 // Stuffing
 
 int byte_stuffing(unsigned char* packet, int length, unsigned char** frame) {
-    int counter = length;
-
-    // Calculate size of data to allocate the necessary space
-    for (int c = 0; c < length; c++) {
-        if (packet[c] == FLAG || packet[c] == ESCAPE)
-            counter++;
-    }
-
     *frame = NULL;
-    *frame = (unsigned char*) malloc(counter);
+    *frame = (unsigned char*) malloc(MAX_SIZE);
     int index = 0;
 
     // Fill the frame, replacing flage and escape occurrences
@@ -60,22 +52,12 @@ int byte_stuffing(unsigned char* packet, int length, unsigned char** frame) {
         index++;
     }
 
-    return counter;
+    return index;
 }
 
 int byte_destuffing(unsigned char* packet, int length, unsigned char** frame) {
-    int counter = length;
-
-    // Calculate size of data to allocate the necessary space
-    for (int c = 0; c < length; c++) {
-        if (packet[c] == ESCAPE) {
-            counter--;
-            c++;
-        }
-    }
-
     *frame = NULL;
-    *frame = (unsigned char*) malloc(counter);
+    *frame = (unsigned char*) malloc(MAX_SIZE);
     int index = 0;
 
     // Fill the frame, replacing escaped occurrences
@@ -89,7 +71,7 @@ int byte_destuffing(unsigned char* packet, int length, unsigned char** frame) {
         index++;
     }
 
-    return counter;
+    return index;
 }
 
 // Information Frames

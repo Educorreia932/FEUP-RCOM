@@ -12,16 +12,28 @@ int main(int argc, char **argv) {
     parse_flags(argc, argv);
 
     // Ask app to establish connection
-    int fd = llopen(app->port, app->status); // TODO: port 
+    int fd = llopen(app->port, app->status);  
 
     if (fd < 0) {
         perror("Failed to establish connection.\n");
+        free(app);
+        free(llink);
         exit(1);
     }
 
+    //Start file transmission
     file_transmission();
 
-    llclose(fd);
+    //End connection
+    if(llclose(fd) < 0){
+        perror("Failed to close connection.\n");
+        free(app);
+        free(llink);
+        exit(1);
+    }
+
+    free(app);
+    free(llink);
 
     return 0;
 }
