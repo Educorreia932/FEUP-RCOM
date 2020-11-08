@@ -105,201 +105,170 @@ int write_info_frame(int fd, unsigned char* packet, int length) {
     unsigned char* frame;
     int frame_length = create_information_frame(packet, length, &frame);
     
-    bool bcc_success = true;
-    unsigned char bcc_result;
-    char C;
-
-    char buffer[1];
-
     // Start state machine
     struct state_machine stm;
     stm.current_state = START;
     stm.status = TRANSMITTER;
-
+    
+    // Reset Values
     alarm_counter = 0;
     flag = true;
-    int n; // Written characters
 
+    bool bcc_success = true;
+    unsigned char bcc_val;
+    char c_val, buffer[1];
+    int writtenLen; // Written characters
+    
     // Writing Frame Loop
     while (alarm_counter < llink->numTransmissions) {
         if (flag) {
-            alarm(llink->timeout); // Activactes alarm
+            alarm(llink->timeout); // Activates alarm
             flag = false;
 
-            n = write(fd, frame, frame_length); // Sends I Frame
-
-            if (n == -1) {
+            if ((writtenLen = write(fd, frame, frame_length)) < 0) { // Writes frame
                 perror("Failed to send information frame message.");
-                return -1;
+                break;
             }
-
             printf("Sent information frame. \n");
         }
-
-        if (read(fd, buffer, 1) < 0) {
-            // Read was not interrupted by the alarm, so it wasn't the cause for errno
-            if (errno != EINTR) {
-                perror("Failed to read.");
-                return -1;
+        if (read(fd, buffer, 1) < 0) { // Reads response
+            if (errno != EINTR) { // Check if read was interrupted by alarm
+                perror("Failed to read acknowledgement message.");
+                break;
             }
         }
-
-        // No error occurred
         else {
-            change_state(&stm, buffer[0]);
+            change_state(&stm, buffer[0]); // Updates state of state machine
 
-            switch (stm.current_state) {
+            switch (stm.current_state) { 
                 case A_ANSWER_RCV:
-                    bcc_result = buffer[0];
-
+                    bcc_val = buffer[0]; // Stores A value
                     break;
 
                 case C_RCV:
-                    bcc_result ^= buffer[0];
-                    C = buffer[0];
-
+                    bcc_val ^= buffer[0]; // Calculates BCC 1
+                    c_val = buffer[0]; // Stores C
                     break;
 
                 case BCC_1_RCV:
-                    if (bcc_result != buffer[0])
+                    if (bcc_val != buffer[0]) // Check if BCC is right
                         bcc_success = false;
-
                     break;
 
                 case STOP:
-                    // Check frame type (RR or REJ)
-                    if ((C == C_RR || C == (C_RR & SEQUENCE_MASK_R)) && bcc_success) {
+                    if ((c_val == C_RR || c_val == (C_RR & SEQUENCE_MASK_R)) && bcc_success) { // Check if it is RR message
                         printf("Received RR message.\n");
-                        alarm(0);
-                        llink->sequenceNumber = ~llink->sequenceNumber; // 0 or 1
-
-                        return n;
+                        alarm(0); // Deactivate alarm
+                        llink->sequenceNumber = ~llink->sequenceNumber; // Update sequence numebr (0 or 1)
+                        free(frame);
+                        return writtenLen;
                     }
-
                     else { // Received REJ frame. Need to resend I Frame (flag = 1).
-                        printf("Received REJ message.\n");
-                        flag = true;
-                        alarm_counter = 0;
+                        printf("Received REJ message.\n"); 
+                        flag = true; // Reset Flag
+                        alarm_counter = 0; // Reset alarm_counter
                         stm.current_state = START; //Restart state machine
                     }
-            }
+            }   
         }
     }
-
-    // free(frame);
-
-    if (alarm_counter == llink->numTransmissions) {
+    if (alarm_counter == llink->numTransmissions) 
         perror("Failed to receive acknowledgement.\n");
-        return -1;
-    }
-
+    free(frame);
     return -1;
 }
 
+/**
+ * Receives an information frame 
+ */
 int read_info_frame(int fd, unsigned char** data_field) {
-    bool changeNs = false;
-    int counter = 0, length;
-    char buffer[1];
-    bool bcc_success = true, discard = false;
-    unsigned char bcc_result;
 
-    bool received_info = false;
-
+    // Start state machine
     struct state_machine stm;
-
     stm.status = RECEIVER;
     stm.current_state = START;
 
-    unsigned char frame[MAX_SIZE];
-
+    char buffer[1];
+    int data_counter = 0, length = 0;
+    unsigned char bcc_val, frame[MAX_SIZE];
+    bool received_info = false, bcc_success = true, discard_frame = false, change_Ns = false;
+    
+    // Reading loop 
     while (!received_info) {
         if (read(fd, buffer, 1) < 0) {
             perror("Failed to read.");
             exit(1);
         }
-
         else {
-            if (stm.current_state == START)
-                counter = 0;
-
-            change_state(&stm, buffer[0]);
+            change_state(&stm, buffer[0]); // Update state in state machine
 
             switch (stm.current_state) {
-                case A_CMD_RCV:
-                    bcc_result = buffer[0];
-
+                case A_CMD_RCV: // Received A
+                    bcc_val = buffer[0]; // Store A
                     break;
 
-                case C_I_RCV:
+                case C_I_RCV: // Receive C
                     if (buffer[0] != (llink->sequenceNumber & SEQUENCE_MASK_S))
-                        discard = true;
+                        discard_frame = true; // Repeated frame. Discard.
+                    else change_Ns = true; // Frame is not repeated. Need to update sequence number.
 
-                    else
-                       changeNs = true;
-                case C_RCV:
-                    bcc_result ^= buffer[0];
-
+                case C_RCV: // Received C
+                    bcc_val ^= buffer[0];
                     break;
 
                 case BCC_1_RCV:
-                    if (bcc_result != buffer[0])
+                    if (bcc_val != buffer[0]) // Check BCC value
                         bcc_success = false;
-
                     break;
 
-                case D_RCV: // Store the data field and BCC_2
-                    frame[counter] = buffer[0];
-                    counter++;
-
+                case D_RCV: // Received data or BCC2
+                    frame[data_counter++] = buffer[0]; // Store data received
                     break;
 
-                case STOP:
-                    length = byte_destuffing(frame, counter, data_field);
-
-                    bcc_result = (*data_field)[0];
-
-                    for (int i = 1; i < length - 1; i++)
-                        bcc_result ^= (*data_field)[i];
-
-                    if (bcc_result != (*data_field)[length - 1])
-                        bcc_success = false;
-
-                    int n;
-                    
+                case STOP: // Finished receiving data
                     printf("Received information frame.\n");
 
+                    length = byte_destuffing(frame, data_counter, data_field); // Destuffing of data
+                    
+                    // Calculate BCC2
+                    bcc_val = (*data_field)[0];
+                    for (int i = 1; i < (length - 1); i++)
+                        bcc_val ^= (*data_field)[i]; 
+
+                    if (bcc_val != (*data_field)[length - 1]) // Check BCC2
+                        bcc_success = false;
+                    
+                    int written_len = 0;
+                    // Decide if we need to send RR or REJ
                     if (bcc_success) {
+                        received_info = true; // Finish loop
+
+                        written_len = write_supervision_frame(fd, A_RC_RESP, C_RR | (llink->sequenceNumber && SEQUENCE_MASK_R)); // Write RR message.
                         printf("Sent RR message.\n");
-
-                        n = write_supervision_frame(fd, A_RC_RESP, C_RR | (llink->sequenceNumber && SEQUENCE_MASK_R));
-                        received_info = true;
-                        if(changeNs)      llink->sequenceNumber = ~llink->sequenceNumber;
-                        changeNs = false;
+                        
+                        if(change_Ns) llink->sequenceNumber = ~llink->sequenceNumber; // Update sequence number
+                        change_Ns = false; // Reset value
                     }
-
                     else {
+                        written_len = write_supervision_frame(fd, A_RC_RESP, C_REJ | (llink->sequenceNumber && SEQUENCE_MASK_R)); // Write REJ message.
                         printf("Sent REJ message.\n");
-                        n = write_supervision_frame(fd, A_RC_RESP, C_REJ | (llink->sequenceNumber && SEQUENCE_MASK_R));
-                        stm.current_state = START;
 
-                        memset(frame, 0, counter); // Clean up the frame
-                        counter = 0;
-                        bcc_success = true;
+                        // Reset values
+                        stm.current_state = START; // Reset state machine
+                        memset(frame, 0, data_counter); // Clean up the frame
+                        data_counter = 0; // Reset frame counter
+                        bcc_success = true; 
                     }
 
-                    if (n < 0) {
+                    if (written_len < 0) { // Verify written errors
                         perror("Failed to send acknowledgement message.");
                         exit(1);
                     }
-
-                    break;
             }
         }
     }
 
-    if (discard)
-        return -1;
-
+    if (discard_frame) return -1; // Discard frame (repeated)
     return length;
 }
 
