@@ -201,7 +201,7 @@ int file_transmission() {
         int L1, L2;
 
         unsigned char* file_array;
-        int filesize, file_index = 0;
+        int filesize = 0, file_index = 0;
 
         bool transmission_ended = false;
         while (!transmission_ended) {
