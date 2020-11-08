@@ -7,6 +7,9 @@ int fd,  alarm_counter = 0;
 
 void alarm_handler();
 
+/**
+ * Function used for byte stuffing.
+ */
 int byte_stuffing(unsigned char* packet, int length, unsigned char** frame) {
     *frame = NULL;
     *frame = (unsigned char*) malloc(MAX_SIZE);
@@ -14,15 +17,15 @@ int byte_stuffing(unsigned char* packet, int length, unsigned char** frame) {
     int index = 0;
     // Fill the frame, replacing flage and escape occurrences
     for (int c = 0; c < length; c++) {
-        if (packet[c] == FLAG) {
+        if (packet[c] == FLAG) { // Stuff Flag
             (*frame)[index] = ESCAPE;
             (*frame)[++index] = FLAG_STUFF;
         }
-        else if (packet[c] == ESCAPE) {
+        else if (packet[c] == ESCAPE) { // Suff Escape
             (*frame)[index] = ESCAPE;
             (*frame)[++index] = ESCAPE_STUFF;
         }
-        else (*frame)[index] = packet[c];
+        else (*frame)[index] = packet[c]; // Keep value
 
         index++;
     }
@@ -30,6 +33,9 @@ int byte_stuffing(unsigned char* packet, int length, unsigned char** frame) {
     return index; // Return size of result
 }
 
+/**
+ * Function for byte destuffing.
+ */
 int byte_destuffing(unsigned char* packet, int length, unsigned char** frame) {
     *frame = NULL;
     *frame = (unsigned char*) malloc(MAX_SIZE);
@@ -277,8 +283,6 @@ int read_info_frame(int fd, unsigned char** data_field) {
  * Sends SET & UA frames.
  */
 int establish_connection(char* port, enum Status status) {
-    llink->sequenceNumber = 0;
-
     /*
     Open serial port device for reading and writing and not as controlling tty
     because we don't want to get killed if linenoise sends CTRL-C.
@@ -303,7 +307,6 @@ int establish_connection(char* port, enum Status status) {
 
     /* Set input mode (non-canonical, no echo,...) */
     newtio.c_lflag = 0;
-
     newtio.c_cc[VTIME] = 0; /* Inter-character timer unused */
     newtio.c_cc[VMIN] = 1;  /* Blocking read until 5 chars received */
 
@@ -323,13 +326,12 @@ int establish_connection(char* port, enum Status status) {
 
     // Set state machine
     struct state_machine stm;
-
     stm.status = status;
     stm.current_state = START;
 
+    llink->sequenceNumber = 0; // Initializes sequence number 
     char buf[5];
-
-    if (status == TRANSMITTER) {
+    if (status == TRANSMITTER) { // Transmitter
         // Set alarm handler
         action.sa_handler = &alarm_handler;
         sigemptyset(&action.sa_mask);
@@ -341,153 +343,111 @@ int establish_connection(char* port, enum Status status) {
             exit(1);
         }
 
-        bool receivedUA = false;
-
-        // Tries to send SET Message
         while (alarm_counter < llink->numTransmissions) {
             if (flag) {
                 alarm(llink->timeout); // Activactes alarm
                 flag = false;
 
-                int n = write_supervision_frame(fd, A_EM_CMD, C_SET); // Sends SET message
-
-                if (n == -1) {
+                if (write_supervision_frame(fd, A_EM_CMD, C_SET) < 0) { // Sends SET message
                     perror("Failed to send SET message.");
                     exit(1);
                 }
-
                 printf("Sent SET message. \n");
             }
-
-            // Tries to receive UA message
-            if (read(fd, buf, 1) < 0) {
-                // Read was not interrupted by the alarm, so it wasn't the cause for errno
-                if (errno != EINTR) {
-                    perror("Failed to read.");
+            
+            if (read(fd, buf, 1) < 0) { // Receive UA message
+                if (errno != EINTR) { // Check if read was interrupted by an alarm
+                    perror("Failed to read UA message.");
                     exit(1);
                 }
             }
-
-            // No error occured
             else {
-                change_state(&stm, buf[0]); // Check if it is UA msg (state machine)
-
-                if (stm.current_state == STOP)
-                    receivedUA = true;
-            }
-
-            if (receivedUA) {
-                alarm(0);
-                printf("Received UA message.\n");
-                printf("Established connection\n");
-                break; // Read successfully UA msg
+                change_state(&stm, buf[0]); // Update state of state machine
+                if (stm.current_state == STOP){ // Successfully received UA message
+                    printf("Received UA message.\n");
+                    alarm(0); // Deactivate alarm
+                    break; // Stop reading loop 
+                }
             }
         }
-
-        if (alarm_counter == llink->numTransmissions) {
+        if (alarm_counter == llink->numTransmissions) { // Check timeout 
             perror("Failed to establish connection.\n");
             exit(1);
         }
-
     }
-
     else if (status == RECEIVER) {
         bool receivedSet = false;
 
         while (!receivedSet) {
-            // Tries to receive SET message
-            if (read(fd, buf, 1) < 0) {
-                perror("Failed to read.");
+            if (read(fd, buf, 1) < 0) { // Receive SET message
+                perror("Failed to read SET message.");
                 exit(1);
             }
-
             else {
-                change_state(&stm, buf[0]); // Check if it is SET msg (state machine)
-
-                if (stm.current_state == STOP)
+                change_state(&stm, buf[0]); // Update state of state machine.
+                if (stm.current_state == STOP) // Sucessfully read SET message
                     receivedSet = true;
             }
         }
-
         printf("Received SET message.\n");
 
-        int n = write_supervision_frame(fd, A_RC_RESP, C_UA); // Sends UA message
-
-        if (n == -1) {
+        if (write_supervision_frame(fd, A_RC_RESP, C_UA) < 0) { // Send UA message
             perror("Failed to send UA message.");
             exit(1);
         }
-
         printf("Sent UA message.\n");
-        printf("Established connection\n");
     }
-
+    printf("Established connection\n");
     return fd;
 }
 
+/**
+ * Finishes connection.
+ * Sends DISC Frames.
+ */
 int finish_connection(int fd, enum Status status) {
-    alarm_counter = 0;
-    flag = true;
-
-    // Set state machine
+    // Set up state machine
     struct state_machine stm;
-
     stm.status = status;
     stm.current_state = START;
 
-    char buf[5];
-
+    alarm_counter = 0;
+    flag = true;
+    char buf[1];
     if (status == TRANSMITTER) {
-        bool receivedDISC = false;
-
         // Tries to send DISC Message
         while (alarm_counter < llink->numTransmissions) {
             if (flag) {
                 alarm(llink->timeout); // Activactes alarm
                 flag = false;
 
-                int n = write_supervision_frame(fd, A_EM_CMD, C_DISC); // Sends DISC message
-
-                if (n == -1) {
+                if (write_supervision_frame(fd, A_EM_CMD, C_DISC) < 0) { // Sends DISC message.
                     perror("Failed to send DISC message.");
                     exit(1);
                 }
-
                 printf("Sent DISC message. \n");
             }
 
-            // Tries to receive DISC message
-            if (read(fd, buf, 1) < 0) {
-                // Read was not interrupted by the alarm, so it wasn't the cause for errno
-                if (errno != EINTR) {
-                    perror("Failed to read.");
+            if (read(fd, buf, 1) < 0) { // Tries to receive DISC message
+                if (errno != EINTR) { // Check if read was interrupted by alarm.
+                    perror("Failed to read DISC message.");
                     exit(1);
                 }
             }
-
-            // No error occured
             else {
-                change_state(&stm, buf[0]); // Check if it is UA msg (state machine)
+                change_state(&stm, buf[0]); // Update state of state machine
 
-                if (stm.current_state == STOP)
-                    receivedDISC = true;
-            }
+                if (stm.current_state == STOP){ // Successfully read a DISC message
+                    printf("Received DISC message.\n");
+                    alarm(0); // Cancel alarm.
 
-            if (receivedDISC) {
-                alarm(0);
-                printf("Received DISC message.\n");
-
-                int n = write_supervision_frame(fd, A_EM_CMD, C_UA); // Sends UA message
-
-                if (n == -1) {
-                    perror("Failed to send UA message.");
-                    exit(1);
+                    if (write_supervision_frame(fd, A_EM_CMD, C_UA) < 0) { // Sends UA message
+                        perror("Failed to send UA message.");
+                        exit(1);
+                    }
+                    printf("Sent UA message. \n");
+                    break; // Stop loop.
                 }
-
-                printf("Sent UA message. \n");
-                printf("Finished connection\n");
-
-                break;
             }
         }
 
@@ -497,56 +457,44 @@ int finish_connection(int fd, enum Status status) {
         }
 
     }
-
     else if (status == RECEIVER) {
         bool receivedDISC = false;
-        bool receivedUA = false;
-
         while (!receivedDISC) {
-            // Tries to receive DISC message
-            if (read(fd, buf, 1) < 0) {
-                perror("Failed to read.");
+            if (read(fd, buf, 1) < 0) { // Receives DISC message
+                perror("Failed to read DISC message.");
                 exit(1);
             }
-
             else {
-                change_state(&stm, buf[0]); // Check if it is DISC msg (state machine)
+                change_state(&stm, buf[0]); // Update state machine
 
-                if (stm.current_state == STOP)
+                if (stm.current_state == STOP) // Sucessfully read DISC message.
                     receivedDISC = true;
             }
         }
-
         printf("Received DISC message.\n");
 
-        int n = write_supervision_frame(fd, A_RC_CMD, C_DISC); // Sends UA message
-
-        if (n == -1) {
+        if (write_supervision_frame(fd, A_RC_CMD, C_DISC) < 0) { // Sends DISC message.
             perror("Failed to send DISC message.");
             exit(1);
         }
-
         printf("Sent DISC message.\n");
 
+        bool receivedUA = false;
         while (!receivedUA) {
-            // Tries to receive UA message
-            if (read(fd, buf, 1) < 0) {
-                perror("Failed to read.");
+            if (read(fd, buf, 1) < 0) { // Tries to receive UA message
+                perror("Failed to read UA message.");
                 exit(1);
             }
-
             else {
-                change_state(&stm, buf[0]); // Check if it is UA msg (state machine)
+                change_state(&stm, buf[0]); // Update state machine.
 
-                if (stm.current_state == STOP)
+                if (stm.current_state == STOP) // Sucessfully read UA message. 
                     receivedUA = true;
             }
         }
-
         printf("Received UA message.\n");
-        printf("Finished connection\n");
     }
-
+    printf("Finished connection.\n");
     return 0;
 }
 
