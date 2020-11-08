@@ -5,7 +5,7 @@ CC = gcc
 CFLAGS = -Wall -g
 
 main: 
-	@gcc ${CFLAGS} -o main app.c link.c main.c state_machine.c  log.c -lm
+	@gcc ${CFLAGS} -o main app.c link.c main.c state_machine.c -lm
 
 clean:
 	@rm -f main
