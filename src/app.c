@@ -221,8 +221,8 @@ int file_transmission() {
         while (!transmission_ended) {
             // Receive packet
             unsigned char* buffer;
-            if(llread(app->fileDescriptor, &buffer) < 0){
-                continue; // Ignore packet
+            if(llread(app->fileDescriptor, &buffer) == 0){
+                continue; // Empty packet
             }
     
             switch (buffer[0]) {

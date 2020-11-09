@@ -258,12 +258,16 @@ int read_info_frame(int fd, unsigned char** data_field) {
                     else {
                         written_len = write_supervision_frame(fd, A_RC_RESP, C_REJ | (llink->sequenceNumber && SEQUENCE_MASK_R)); // Write REJ message.
                         printf("Sent REJ message.\n");
+                    }
 
+                    if(!bcc_success || discard_frame){ // Need to reset values if we received repeated frame or if the bcc is wrong
                         // Reset values
                         stm.current_state = START; // Reset state machine
                         memset(frame, 0, data_counter); // Clean up the frame
                         data_counter = 0; // Reset frame counter
                         bcc_success = true; 
+                        discard_frame = false;
+                        received_info = false;
                     }
 
                     if (written_len < 0) { // Verify written errors
@@ -274,7 +278,6 @@ int read_info_frame(int fd, unsigned char** data_field) {
         }
     }
 
-    if (discard_frame) return -1; // Discard frame (repeated)
     return length;
 }
 
