@@ -7,7 +7,7 @@ CFLAGS = -Wall -g
 main: 
 	@gcc ${CFLAGS} -o main app.c link.c main.c state_machine.c -lm
 
-clean:
+clean:	
 	@rm -f main
 
 initialize:

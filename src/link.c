@@ -53,9 +53,9 @@ int byte_destuffing(unsigned char* packet, int length, unsigned char** frame) {
 }
 
 /**
- * Creates & sends a supervision frame.
+ * Creates and sends a supervision/unnumbered frame.
  */
-int write_supervision_frame(int fd, char a, char c) {
+int write_su_frame(int fd, char a, char c) {
     unsigned char buf[5];
 
     buf[0] = FLAG; // F
@@ -249,14 +249,14 @@ int read_info_frame(int fd, unsigned char** data_field) {
                     if (bcc_success) {
                         received_info = true; // Finish loop
 
-                        written_len = write_supervision_frame(fd, A_RC_RESP, C_RR | (llink->sequenceNumber && SEQUENCE_MASK_R)); // Write RR message.
+                        written_len = write_su_frame(fd, A_RC_RESP, C_RR | (llink->sequenceNumber && SEQUENCE_MASK_R)); // Write RR message.
                         printf("Sent RR message.\n");
                         
                         if(change_Ns) llink->sequenceNumber = ~llink->sequenceNumber; // Update sequence number
                         change_Ns = false; // Reset value
                     }
                     else {
-                        written_len = write_supervision_frame(fd, A_RC_RESP, C_REJ | (llink->sequenceNumber && SEQUENCE_MASK_R)); // Write REJ message.
+                        written_len = write_su_frame(fd, A_RC_RESP, C_REJ | (llink->sequenceNumber && SEQUENCE_MASK_R)); // Write REJ message.
                         printf("Sent REJ message.\n");
                     }
 
@@ -351,7 +351,7 @@ int establish_connection(char* port, enum Status status) {
                 alarm(llink->timeout); // Activactes alarm
                 flag = false;
 
-                if (write_supervision_frame(fd, A_EM_CMD, C_SET) < 0) { // Sends SET message
+                if (write_su_frame(fd, A_EM_CMD, C_SET) < 0) { // Sends SET message
                     perror("Failed to send SET message.");
                     exit(1);
                 }
@@ -394,7 +394,7 @@ int establish_connection(char* port, enum Status status) {
         }
         printf("Received SET message.\n");
 
-        if (write_supervision_frame(fd, A_RC_RESP, C_UA) < 0) { // Send UA message
+        if (write_su_frame(fd, A_RC_RESP, C_UA) < 0) { // Send UA message
             perror("Failed to send UA message.");
             exit(1);
         }
@@ -424,7 +424,7 @@ int finish_connection(int fd, enum Status status) {
                 alarm(llink->timeout); // Activactes alarm
                 flag = false;
 
-                if (write_supervision_frame(fd, A_EM_CMD, C_DISC) < 0) { // Sends DISC message.
+                if (write_su_frame(fd, A_EM_CMD, C_DISC) < 0) { // Sends DISC message.
                     perror("Failed to send DISC message.");
                     exit(1);
                 }
@@ -444,7 +444,7 @@ int finish_connection(int fd, enum Status status) {
                     printf("Received DISC message.\n");
                     alarm(0); // Cancel alarm.
 
-                    if (write_supervision_frame(fd, A_EM_CMD, C_UA) < 0) { // Sends UA message
+                    if (write_su_frame(fd, A_EM_CMD, C_UA) < 0) { // Sends UA message
                         perror("Failed to send UA message.");
                         exit(1);
                     }
@@ -455,7 +455,7 @@ int finish_connection(int fd, enum Status status) {
         }
 
         if (alarm_counter == llink->numTransmissions) {
-            perror("Failed to establish connection.\n");
+            perror("Failed to finish connection.\n");
             exit(1);
         }
 
@@ -476,7 +476,7 @@ int finish_connection(int fd, enum Status status) {
         }
         printf("Received DISC message.\n");
 
-        if (write_supervision_frame(fd, A_RC_CMD, C_DISC) < 0) { // Sends DISC message.
+        if (write_su_frame(fd, A_RC_CMD, C_DISC) < 0) { // Sends DISC message.
             perror("Failed to send DISC message.");
             exit(1);
         }
