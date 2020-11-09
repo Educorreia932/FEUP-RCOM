@@ -66,10 +66,6 @@ void parse_flags(int argc, char** argv) {
         else if (!strcmp(argv[i], "-n") || !strcmp(argv[i], "--num_transmissions"))
             llink->numTransmissions = atoi(argv[i + 1]);
 
-        // Alarm time (in seconds)
-        else if (!strcmp(argv[i], "-n") || !strcmp(argv[i], "--alarm"))
-            llink->numTransmissions = atoi(argv[i + 1]);
-
         // File to transfer
         else if (!strcmp(argv[i], "-f") || !strcmp(argv[i], "--file"))
             strcpy(app->filename, argv[i + 1]);
