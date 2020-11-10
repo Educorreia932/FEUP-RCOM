@@ -9,9 +9,9 @@ void change_state(struct state_machine* stm, char field) {
             break;
 
         case FLAG_RCV:
-            if(field == FLAG){ // Received FLAG
-                // Do nothing
-            }
+            if(field == FLAG) // Received FLAG
+                break; // Do nothing
+
             else if (stm->status == RECEIVER) {
                 if (field == A_EM_CMD) // Received A command
                     stm->current_state = A_CMD_RCV;
@@ -21,6 +21,7 @@ void change_state(struct state_machine* stm, char field) {
 
                 else stm->current_state = START; // Received other
             }
+            
             else if (stm->status == TRANSMITTER) {
                 if (field == A_RC_CMD)  // Received A command
                     stm->current_state = A_CMD_RCV;
@@ -30,6 +31,7 @@ void change_state(struct state_machine* stm, char field) {
 
                 else stm->current_state = START; // Received other
             }
+
             break;
 
         case A_CMD_RCV: 

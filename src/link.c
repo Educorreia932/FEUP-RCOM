@@ -12,7 +12,7 @@ void alarm_handler();
  */
 int byte_stuffing(unsigned char* packet, int length, unsigned char** frame) {
     *frame = NULL;
-    *frame = (unsigned char*) malloc(MAX_SIZE);
+    *frame = (unsigned char*) malloc(length * 2);
 
     int index = 0;
     // Fill the frame, replacing flage and escape occurrences
@@ -21,11 +21,14 @@ int byte_stuffing(unsigned char* packet, int length, unsigned char** frame) {
             (*frame)[index] = ESCAPE;
             (*frame)[++index] = FLAG_STUFF;
         }
+
         else if (packet[c] == ESCAPE) { // Suff Escape
             (*frame)[index] = ESCAPE;
             (*frame)[++index] = ESCAPE_STUFF;
         }
-        else (*frame)[index] = packet[c]; // Keep value
+
+        else (*frame)
+            [index] = packet[c]; // Keep value
 
         index++;
     }
@@ -38,7 +41,7 @@ int byte_stuffing(unsigned char* packet, int length, unsigned char** frame) {
  */
 int byte_destuffing(unsigned char* packet, int length, unsigned char** frame) {
     *frame = NULL;
-    *frame = (unsigned char*) malloc(MAX_SIZE);
+    *frame = (unsigned char*) malloc(length);
 
     int index = 0;
     // Fill the frame, replacing escaped occurrences
