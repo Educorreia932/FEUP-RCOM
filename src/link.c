@@ -211,6 +211,9 @@ int read_info_frame(int fd, unsigned char** data_field) {
             exit(1);
         }
         else {
+            int a, b, p = 0;
+            a = rand() % 100 + 1;
+            b = rand() % 100 + 1;
             change_state(&stm, buffer[0]); // Update state in state machine
 
             switch (stm.current_state) {
@@ -228,7 +231,7 @@ int read_info_frame(int fd, unsigned char** data_field) {
                     break;
 
                 case BCC_1_RCV:
-                    if (bcc_val != buffer[0]) // Check BCC value
+                    if (bcc_val != buffer[0] || a <= p) // Check BCC value
                         bcc_success = false;
                     break;
 
@@ -247,7 +250,7 @@ int read_info_frame(int fd, unsigned char** data_field) {
                     for (int i = 1; i < (length - 1); i++)
                         bcc_val ^= (*data_field)[i]; 
 
-                    if (bcc_val != (*data_field)[length - 1]) // Check BCC2
+                    if (bcc_val != (*data_field)[length - 1] || b <= p) // Check BCC2
                         bcc_success = false;
                     
                     int written_len = 0;
@@ -283,7 +286,7 @@ int read_info_frame(int fd, unsigned char** data_field) {
             }
         }
     }
-
+    //usleep(0);
     return length;
 }
 

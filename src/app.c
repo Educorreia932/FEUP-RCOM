@@ -181,13 +181,22 @@ int file_transmission() {
         
         free(packet);
 
+        char filearray[st.st_size];
+        fread(filearray, 1, st.st_size, fp); // Reads from file and stores in data_field
+
         // Calculate the number of chunks in which the file will be split
         int num_chunks = ceil(st.st_size / (double) app->chunk_size); 
 
         // Creates data packets
+        size_t length = app->chunk_size;
+        int index = 0;
         for (int i = 0; i < num_chunks; i++) {
             unsigned char data_field[app->chunk_size];
-            size_t length = fread(data_field, 1, app->chunk_size, fp); // Reads from file and stores in data_field
+            if(i == num_chunks - 1) 
+                length = st.st_size - (length * i) ;
+            
+            memcpy(data_field, filearray + index, length);
+            index += app->chunk_size;
             packet_size = data_packet(data_field, length, &packet); // Prepares a data packet 
 
             //Sends data packet
