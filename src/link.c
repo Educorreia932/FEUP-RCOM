@@ -85,7 +85,7 @@ int create_information_frame(unsigned char* packet, int length, unsigned char** 
     int new_length = byte_stuffing(packet, length, &stuffed_data); // Byte-stuff packet
 
     // Allocs memory for frame
-    *frame = (unsigned char*) malloc(new_length + 5 + bcc_length); //TODO: check size after stuffing, cant' exceed MAX_SIZE
+    *frame = (unsigned char*) malloc(new_length + 5 + bcc_length); 
     
     // Fills frame
     (*frame)[0] = FLAG;                                    // F
@@ -183,7 +183,9 @@ int write_info_frame(int fd, unsigned char* packet, int length) {
     }
     if (alarm_counter == llink->numTransmissions) 
         perror("Failed to receive acknowledgement.\n");
+        
     free(frame);
+
     return -1;
 }
 
@@ -241,6 +243,7 @@ int read_info_frame(int fd, unsigned char** data_field) {
                     
                     // Calculate BCC2
                     bcc_val = (*data_field)[0];
+                    
                     for (int i = 1; i < (length - 1); i++)
                         bcc_val ^= (*data_field)[i]; 
 

@@ -28,6 +28,7 @@ int control_packet(enum Control status, char* filename, int filesize, unsigned c
 
     // V1
     int c;
+
     for (c = v1_ind; c < (L1 + v1_ind); c++)
         (*packet)[c] = (filesize >> 8 * (c - v1_ind)) & (0xFF); // V1
     
@@ -36,6 +37,7 @@ int control_packet(enum Control status, char* filename, int filesize, unsigned c
 
     // V2
     int v2_ind = c;
+
     for (; c < L2 + v2_ind; c++)
         (*packet)[c] = filename[c - v2_ind];
 
@@ -90,6 +92,7 @@ struct stat open_file(char* filename) {
         perror("Failed stat call.\n");
         exit(1);
     }
+
     return st;
 }
 
@@ -140,6 +143,7 @@ int llread(int fd, unsigned char** buffer) {
 
 /**
  * Prints a progress bar
+ * Showing the current transmission progress
  */
 void progress_bar(float progress) { 
     int length = 50;
@@ -174,6 +178,7 @@ int file_transmission() {
             perror("Failed to send start packet.\n");
             exit(1);
         }
+        
         free(packet);
 
         // Calculate the number of chunks in which the file will be split
@@ -184,13 +189,14 @@ int file_transmission() {
             unsigned char data_field[app->chunk_size];
             size_t length = fread(data_field, 1, app->chunk_size, fp); // Reads from file and stores in data_field
             packet_size = data_packet(data_field, length, &packet); // Prepares a data packet 
-            
+
             //Sends data packet
             if(llwrite(app->fileDescriptor, packet, packet_size) < 0){
                 free(packet);    
                 perror("Failed to send data packet.\n");
                 exit(1);
             }
+
             free(packet);
 
             // Update sequence number
@@ -206,6 +212,7 @@ int file_transmission() {
             perror("Failed to send end packet.\n");
             exit(1);
         }
+
         free(packet);
     }
 
@@ -221,9 +228,9 @@ int file_transmission() {
         while (!transmission_ended) {
             // Receive packet
             unsigned char* buffer;
-            if(llread(app->fileDescriptor, &buffer) == 0){
+
+            if(llread(app->fileDescriptor, &buffer) == 0)
                 continue; // Empty packet
-            }
     
             switch (buffer[0]) {
                 case start: // Received Start Packet
@@ -251,6 +258,8 @@ int file_transmission() {
                     st = open_file("../files/received.gif"); 
                     // Create file array where data received will be written to
                     file_array = (unsigned char*) malloc(filesize);
+
+                    free(filename);
 
                     break;
 
@@ -291,6 +300,9 @@ int file_transmission() {
                     fwrite(file_array, 1, filesize, fp); 
                     // Ends cycle
                     transmission_ended = true;
+
+                    free(file_array);
+
                     break;
             }
         }
