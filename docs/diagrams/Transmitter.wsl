@@ -1,0 +1,85 @@
+@startuml Transmitter
+
+skinparam shadowing false
+
+activate Main
+
+Main -> Main: parse_flags()
+Main -> AppLayer: llopen()
+
+activate AppLayer
+AppLayer -> LinkLayer: establish_connection()
+activate LinkLayer
+LinkLayer -> LinkLayer: write_su_frame()
+return
+return
+
+Main -> AppLayer: file_transmission()
+
+activate AppLayer
+AppLayer -> AppLayer: open_file()
+
+group Send start packet
+    AppLayer -> AppLayer: control_packet()
+    AppLayer -> AppLayer: llwrite()
+
+    activate AppLayer
+    AppLayer -> LinkLayer: write_info_frame()
+    activate LinkLayer
+        LinkLayer -> LinkLayer: create_information_frame()
+        activate LinkLayer
+        LinkLayer -> LinkLayer: byte_stuffing()
+        return
+        return
+    deactivate AppLayer
+end
+
+group Send data packets
+    loop For each chunk
+        AppLayer -> AppLayer: data_packet()
+        AppLayer -> AppLayer: llwrite()
+
+        activate AppLayer
+        AppLayer -> LinkLayer: write_info_frame()
+        activate LinkLayer
+        LinkLayer -> LinkLayer: create_information_frame()
+        activate LinkLayer
+        LinkLayer -> LinkLayer: byte_stuffing()
+        return
+        return
+        deactivate AppLayer
+    end
+end
+
+group Send end packet
+    AppLayer -> AppLayer: control_packet()
+    AppLayer -> AppLayer: llwrite()
+
+    activate AppLayer
+    AppLayer -> LinkLayer: write_info_frame()
+    activate LinkLayer
+        LinkLayer -> LinkLayer: create_information_frame()
+        activate LinkLayer
+        LinkLayer -> LinkLayer: byte_stuffing()
+        return
+        return
+    deactivate AppLayer
+end
+
+return
+
+Main -> AppLayer: llclose()
+
+activate AppLayer
+
+AppLayer -> LinkLayer: finish_connection()
+activate LinkLayer
+
+LinkLayer -> LinkLayer: write_su_frame()
+
+return
+return
+
+deactivate Main
+
+@enduml

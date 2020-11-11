@@ -55,7 +55,6 @@ dkms.conf
 main
 
 # Folders
-docs/
 .vscode/
 files/*
 
