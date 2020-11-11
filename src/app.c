@@ -195,9 +195,8 @@ int file_transmission() {
             if(i == num_chunks - 1) 
                 length = st.st_size - (length * i) ;
             
-            memcpy(data_field, filearray + index, length);
+            packet_size = data_packet(filearray + index, length, &packet); // Prepares a data packet 
             index += app->chunk_size;
-            packet_size = data_packet(data_field, length, &packet); // Prepares a data packet 
 
             //Sends data packet
             if(llwrite(app->fileDescriptor, packet, packet_size) < 0){
