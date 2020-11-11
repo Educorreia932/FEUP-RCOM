@@ -1,0 +1,60 @@
+@startuml Receiver
+
+skinparam shadowing false
+
+activate Main
+
+Main -> Main: parse_flags()
+Main -> AppLayer: llopen()
+
+activate AppLayer
+AppLayer -> LinkLayer: establish_connection()
+activate LinkLayer
+LinkLayer -> LinkLayer: write_su_frame()
+return
+return
+
+Main -> AppLayer: file_transmission()
+
+activate AppLayer
+
+
+loop Until transmission ends
+    AppLayer -> AppLayer: llread()
+
+    activate AppLayer
+    AppLayer -> LinkLayer : read_info_frame()
+    activate LinkLayer
+    LinkLayer -> LinkLayer : byte_destuffing()
+    return
+    deactivate AppLayer
+
+    group Received start packet
+        AppLayer -> AppLayer: open_file()
+    end
+
+    group Received data packet
+        AppLayer -> AppLayer: //Save the received data in// \n //to a file array//
+    end
+
+    group Received end packet
+        AppLayer -> AppLayer: //Write contents to file//
+    end
+end
+
+Main -> AppLayer: llclose()
+
+activate AppLayer
+
+AppLayer -> LinkLayer: finish_connection()
+activate LinkLayer
+
+LinkLayer -> LinkLayer: write_su_frame()
+
+return
+deactivate AppLayer
+return
+
+deactivate Main
+
+@enduml
