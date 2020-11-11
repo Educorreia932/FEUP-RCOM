@@ -15,7 +15,14 @@
 #define SEQUENCE_MASK_S 0x40
 #define SEQUENCE_MASK_R 0x80
 
+//#define BAUDRATE B1200
+//#define BAUDRATE B2400
+//#define BAUDRATE B4800
+//#define BAUDRATE B9600
+//#define BAUDRATE B19200
 #define BAUDRATE B38400
+//#define BAUDRATE B57600
+//#define BAUDRATE B115200
 
 typedef struct {
     int baudrate;                  /* Velocidade de transmissão */

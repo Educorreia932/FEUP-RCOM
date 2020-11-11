@@ -329,7 +329,7 @@ int establish_connection(char* port, enum Status status) {
     }
 
     bzero(&newtio, sizeof(newtio));
-    newtio.c_cflag = B38400 | CS8 | CLOCAL | CREAD;
+    newtio.c_cflag = BAUDRATE | CS8 | CLOCAL | CREAD;
     newtio.c_iflag = IGNPAR;
     newtio.c_oflag = 0;
 

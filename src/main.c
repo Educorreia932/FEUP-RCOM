@@ -38,7 +38,6 @@ int main(int argc, char **argv) {
 
 void parse_flags(int argc, char** argv) {
     app->chunk_size = MAX_CHUNK_SIZE;
-    llink->baudrate = BAUDRATE;
 
     for (int i = 1; i < argc; i++) {
         if (!strcmp(argv[i], ""))
