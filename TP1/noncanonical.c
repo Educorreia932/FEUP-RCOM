@@ -59,7 +59,7 @@ int main(int argc, char **argv) {
 	/* 
     VTIME e VMIN devem ser alterados de forma a proteger com um temporizador a 
     leitura do(s) pr�ximo(s) caracter(es)
-   */
+    */
 
 	tcflush(fd, TCIOFLUSH);
 
@@ -75,13 +75,13 @@ int main(int argc, char **argv) {
 		res = read(fd, buf, 255); /* returns after 5 chars have been input */
 		buf[res] = 0;			  /* so we can printf... */
 		printf(":%s:%d\n", buf, res);
-		if (buf[0] == 'z')
+
+		if (buf[res - 1] == '\0')
 			STOP = TRUE;
 	}
 
-	/* 
-    O ciclo WHILE deve ser alterado de modo a respeitar o indicado no gui�o 
-   */
+	res = write(fd, buf, strlen(buf) + 1);   
+    printf("%d bytes written\n", res);
 
 	tcsetattr(fd, TCSANOW, &oldtio);
 	close(fd);
