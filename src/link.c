@@ -1,9 +1,10 @@
 #include "link.h"
+#include <time.h>
 
 struct termios oldtio, newtio;
 struct sigaction action;
 bool flag = true;
-int fd,  alarm_counter = 0;
+int fd, alarm_counter = 0;
 
 void alarm_handler();
 
@@ -27,8 +28,9 @@ int byte_stuffing(unsigned char* packet, int length, unsigned char** frame) {
             (*frame)[++index] = ESCAPE_STUFF;
         }
 
-        else (*frame)
-            [index] = packet[c]; // Keep value
+        else
+            (*frame)
+                [index] = packet[c]; // Keep value
 
         index++;
     }
@@ -46,13 +48,15 @@ int byte_destuffing(unsigned char* packet, int length, unsigned char** frame) {
     int index = 0;
     // Fill the frame, replacing escaped occurrences
     for (int c = 0; c < length; c++) {
-        if (packet[c] == ESCAPE) (*frame)[index] = packet[++c] ^ 0x20;
-        else (*frame)[index] = packet[c];
+        if (packet[c] == ESCAPE)
+            (*frame)[index] = packet[++c] ^ 0x20;
+        else
+            (*frame)[index] = packet[c];
 
         index++;
     }
 
-    return index; // Returns size of result 
+    return index; // Returns size of result
 }
 
 /**
@@ -61,11 +65,11 @@ int byte_destuffing(unsigned char* packet, int length, unsigned char** frame) {
 int write_su_frame(int fd, char a, char c) {
     unsigned char buf[5];
 
-    buf[0] = FLAG; // F
-    buf[1] = a; // A
-    buf[2] = c; // C
+    buf[0] = FLAG;  // F
+    buf[1] = a;     // A
+    buf[2] = c;     // C
     buf[3] = a ^ c; // BCC
-    buf[4] = FLAG; // F
+    buf[4] = FLAG;  // F
 
     return write(fd, buf, 5);
 }
@@ -85,18 +89,18 @@ int create_information_frame(unsigned char* packet, int length, unsigned char** 
     int new_length = byte_stuffing(packet, length, &stuffed_data); // Byte-stuff packet
 
     // Allocs memory for frame
-    *frame = (unsigned char*) malloc(new_length + 5 + bcc_length); 
-    
+    *frame = (unsigned char*) malloc(new_length + 5 + bcc_length);
+
     // Fills frame
     (*frame)[0] = FLAG;                                    // F
     (*frame)[1] = A_EM_CMD;                                // A
     (*frame)[2] = llink->sequenceNumber & SEQUENCE_MASK_S; // Sequence number
     (*frame)[3] = A_EM_CMD ^ (*frame)[2];                  // BCC_1
     memcpy(*frame + 4, stuffed_data, new_length);          // Stuffed Packets
-    
-    new_length += 4; // Updates length (4 bytes from F,A,Ns,BCC)
+
+    new_length += 4;                                      // Updates length (4 bytes from F,A,Ns,BCC)
     memcpy(*frame + new_length, stuffed_bcc, bcc_length); // BCC_2
-    new_length += bcc_length; // Updates length (adds bcc 2 length)
+    new_length += bcc_length;                             // Updates length (adds bcc 2 length)
 
     (*frame)[new_length++] = FLAG; // F
 
@@ -113,12 +117,12 @@ int write_info_frame(int fd, unsigned char* packet, int length) {
     // Prepares frame to send
     unsigned char* frame;
     int frame_length = create_information_frame(packet, length, &frame);
-    
+
     // Start state machine
     struct state_machine stm;
     stm.current_state = START;
     stm.status = TRANSMITTER;
-    
+
     // Reset Values
     alarm_counter = 0;
     flag = true;
@@ -127,7 +131,7 @@ int write_info_frame(int fd, unsigned char* packet, int length) {
     unsigned char bcc_val;
     char c_val, buffer[1];
     int writtenLen; // Written characters
-    
+
     // Writing Frame Loop
     while (alarm_counter < llink->numTransmissions) {
         if (flag) {
@@ -140,23 +144,25 @@ int write_info_frame(int fd, unsigned char* packet, int length) {
             }
             printf("Sent information frame. \n");
         }
+
         if (read(fd, buffer, 1) < 0) { // Reads response
-            if (errno != EINTR) { // Check if read was interrupted by alarm
+            if (errno != EINTR) {      // Check if read was interrupted by alarm
                 perror("Failed to read acknowledgement message.");
                 break;
             }
         }
+
         else {
             change_state(&stm, buffer[0]); // Updates state of state machine
 
-            switch (stm.current_state) { 
+            switch (stm.current_state) {
                 case A_ANSWER_RCV:
                     bcc_val = buffer[0]; // Stores A value
                     break;
 
                 case C_RCV:
                     bcc_val ^= buffer[0]; // Calculates BCC 1
-                    c_val = buffer[0]; // Stores C
+                    c_val = buffer[0];    // Stores C
                     break;
 
                 case BCC_1_RCV:
@@ -167,23 +173,27 @@ int write_info_frame(int fd, unsigned char* packet, int length) {
                 case STOP:
                     if ((c_val == C_RR || c_val == (C_RR & SEQUENCE_MASK_R)) && bcc_success) { // Check if it is RR message
                         printf("Received RR message.\n");
-                        alarm(0); // Deactivate alarm
+
+                        alarm(0);                                       // Deactivate alarm
                         llink->sequenceNumber = ~llink->sequenceNumber; // Update sequence numebr (0 or 1)
                         free(frame);
+
                         return writtenLen;
                     }
+
                     else { // Received REJ frame. Need to resend I Frame (flag = 1).
-                        printf("Received REJ message.\n"); 
-                        flag = true; // Reset Flag
-                        alarm_counter = 0; // Reset alarm_counter
+                        printf("Received REJ message.\n");
+                        flag = true;               // Reset Flag
+                        alarm_counter = 0;         // Reset alarm_counter
                         stm.current_state = START; //Restart state machine
                     }
-            }   
+            }
         }
     }
-    if (alarm_counter == llink->numTransmissions) 
+
+    if (alarm_counter == llink->numTransmissions)
         perror("Failed to receive acknowledgement.\n");
-        
+
     free(frame);
 
     return -1;
@@ -193,7 +203,6 @@ int write_info_frame(int fd, unsigned char* packet, int length) {
  * Receives an information frame 
  */
 int read_info_frame(int fd, unsigned char** data_field) {
-
     // Start state machine
     struct state_machine stm;
     stm.status = RECEIVER;
@@ -203,28 +212,32 @@ int read_info_frame(int fd, unsigned char** data_field) {
     int data_counter = 0, length = 0;
     unsigned char bcc_val, frame[MAX_SIZE];
     bool received_info = false, bcc_success = true, discard_frame = false, change_Ns = false;
-    
-    // Reading loop 
+
+    // Reading loop
     while (!received_info) {
         if (read(fd, buffer, 1) < 0) {
             perror("Failed to read.");
             exit(1);
         }
+
         else {
+            // Frame Error (FER)
             int a, b, p = 0;
             a = rand() % 100 + 1;
             b = rand() % 100 + 1;
+
             change_state(&stm, buffer[0]); // Update state in state machine
 
             switch (stm.current_state) {
-                case A_CMD_RCV: // Received A
+                case A_CMD_RCV:          // Received A
                     bcc_val = buffer[0]; // Store A
                     break;
 
                 case C_I_RCV: // Receive C
                     if (buffer[0] != (llink->sequenceNumber & SEQUENCE_MASK_S))
                         discard_frame = true; // Repeated frame. Discard.
-                    else change_Ns = true; // Frame is not repeated. Need to update sequence number.
+                    else
+                        change_Ns = true; // Frame is not repeated. Need to update sequence number.
 
                 case C_RCV: // Received C
                     bcc_val ^= buffer[0];
@@ -235,7 +248,7 @@ int read_info_frame(int fd, unsigned char** data_field) {
                         bcc_success = false;
                     break;
 
-                case D_RCV: // Received data or BCC2
+                case D_RCV:                            // Received data or BCC2
                     frame[data_counter++] = buffer[0]; // Store data received
                     break;
 
@@ -243,16 +256,16 @@ int read_info_frame(int fd, unsigned char** data_field) {
                     printf("Received information frame.\n");
 
                     length = byte_destuffing(frame, data_counter, data_field); // Destuffing of data
-                    
+
                     // Calculate BCC2
                     bcc_val = (*data_field)[0];
-                    
+
                     for (int i = 1; i < (length - 1); i++)
-                        bcc_val ^= (*data_field)[i]; 
+                        bcc_val ^= (*data_field)[i];
 
                     if (bcc_val != (*data_field)[length - 1] || b <= p) // Check BCC2
                         bcc_success = false;
-                    
+
                     int written_len = 0;
                     // Decide if we need to send RR or REJ
                     if (bcc_success) {
@@ -260,21 +273,21 @@ int read_info_frame(int fd, unsigned char** data_field) {
 
                         written_len = write_su_frame(fd, A_RC_RESP, C_RR | (llink->sequenceNumber && SEQUENCE_MASK_R)); // Write RR message.
                         printf("Sent RR message.\n");
-                        
-                        if(change_Ns) llink->sequenceNumber = ~llink->sequenceNumber; // Update sequence number
-                        change_Ns = false; // Reset value
-                    }
-                    else {
+
+                        if (change_Ns)
+                            llink->sequenceNumber = ~llink->sequenceNumber; // Update sequence number
+                        change_Ns = false;                                  // Reset value
+                    } else {
                         written_len = write_su_frame(fd, A_RC_RESP, C_REJ | (llink->sequenceNumber && SEQUENCE_MASK_R)); // Write REJ message.
                         printf("Sent REJ message.\n");
                     }
 
-                    if(!bcc_success || discard_frame){ // Need to reset values if we received repeated frame or if the bcc is wrong
+                    if (!bcc_success || discard_frame) { // Need to reset values if we received repeated frame or if the bcc is wrong
                         // Reset values
-                        stm.current_state = START; // Reset state machine
+                        stm.current_state = START;      // Reset state machine
                         memset(frame, 0, data_counter); // Clean up the frame
-                        data_counter = 0; // Reset frame counter
-                        bcc_success = true; 
+                        data_counter = 0;               // Reset frame counter
+                        bcc_success = true;
                         discard_frame = false;
                         received_info = false;
                     }
@@ -286,7 +299,10 @@ int read_info_frame(int fd, unsigned char** data_field) {
             }
         }
     }
+
+    // Propagation Time
     //usleep(0);
+
     return length;
 }
 
@@ -313,7 +329,7 @@ int establish_connection(char* port, enum Status status) {
     }
 
     bzero(&newtio, sizeof(newtio));
-    newtio.c_cflag = llink->baudrate | CS8 | CLOCAL | CREAD;
+    newtio.c_cflag = B38400 | CS8 | CLOCAL | CREAD;
     newtio.c_iflag = IGNPAR;
     newtio.c_oflag = 0;
 
@@ -341,7 +357,7 @@ int establish_connection(char* port, enum Status status) {
     stm.status = status;
     stm.current_state = START;
 
-    llink->sequenceNumber = 0; // Initializes sequence number 
+    llink->sequenceNumber = 0; // Initializes sequence number
     char buf[5];
     if (status == TRANSMITTER) { // Transmitter
         // Set alarm handler
@@ -366,27 +382,29 @@ int establish_connection(char* port, enum Status status) {
                 }
                 printf("Sent SET message. \n");
             }
-            
+
             if (read(fd, buf, 1) < 0) { // Receive UA message
-                if (errno != EINTR) { // Check if read was interrupted by an alarm
+                if (errno != EINTR) {   // Check if read was interrupted by an alarm
                     perror("Failed to read UA message.");
                     exit(1);
                 }
             }
+
             else {
-                change_state(&stm, buf[0]); // Update state of state machine
-                if (stm.current_state == STOP){ // Successfully received UA message
+                change_state(&stm, buf[0]);      // Update state of state machine
+                if (stm.current_state == STOP) { // Successfully received UA message
                     printf("Received UA message.\n");
                     alarm(0); // Deactivate alarm
-                    break; // Stop reading loop 
+                    break;    // Stop reading loop
                 }
             }
         }
-        if (alarm_counter == llink->numTransmissions) { // Check timeout 
+        if (alarm_counter == llink->numTransmissions) { // Check timeout
             perror("Failed to establish connection.\n");
             exit(1);
         }
     }
+
     else if (status == RECEIVER) {
         bool receivedSet = false;
 
@@ -394,9 +412,8 @@ int establish_connection(char* port, enum Status status) {
             if (read(fd, buf, 1) < 0) { // Receive SET message
                 perror("Failed to read SET message.");
                 exit(1);
-            }
-            else {
-                change_state(&stm, buf[0]); // Update state of state machine.
+            } else {
+                change_state(&stm, buf[0]);    // Update state of state machine.
                 if (stm.current_state == STOP) // Sucessfully read SET message
                     receivedSet = true;
             }
@@ -441,15 +458,14 @@ int finish_connection(int fd, enum Status status) {
             }
 
             if (read(fd, buf, 1) < 0) { // Tries to receive DISC message
-                if (errno != EINTR) { // Check if read was interrupted by alarm.
+                if (errno != EINTR) {   // Check if read was interrupted by alarm.
                     perror("Failed to read DISC message.");
                     exit(1);
                 }
-            }
-            else {
+            } else {
                 change_state(&stm, buf[0]); // Update state of state machine
 
-                if (stm.current_state == STOP){ // Successfully read a DISC message
+                if (stm.current_state == STOP) { // Successfully read a DISC message
                     printf("Received DISC message.\n");
                     alarm(0); // Cancel alarm.
 
@@ -468,15 +484,13 @@ int finish_connection(int fd, enum Status status) {
             exit(1);
         }
 
-    }
-    else if (status == RECEIVER) {
+    } else if (status == RECEIVER) {
         bool receivedDISC = false;
         while (!receivedDISC) {
             if (read(fd, buf, 1) < 0) { // Receives DISC message
                 perror("Failed to read DISC message.");
                 exit(1);
-            }
-            else {
+            } else {
                 change_state(&stm, buf[0]); // Update state machine
 
                 if (stm.current_state == STOP) // Sucessfully read DISC message.
@@ -496,11 +510,10 @@ int finish_connection(int fd, enum Status status) {
             if (read(fd, buf, 1) < 0) { // Tries to receive UA message
                 perror("Failed to read UA message.");
                 exit(1);
-            }
-            else {
+            } else {
                 change_state(&stm, buf[0]); // Update state machine.
 
-                if (stm.current_state == STOP) // Sucessfully read UA message. 
+                if (stm.current_state == STOP) // Sucessfully read UA message.
                     receivedUA = true;
             }
         }
@@ -516,5 +529,5 @@ int finish_connection(int fd, enum Status status) {
 void alarm_handler() {
     printf("Alarm # %d\n", alarm_counter);
     flag = true; // Resets flag so it tries again
-    alarm_counter++; 
+    alarm_counter++;
 }

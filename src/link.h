@@ -15,6 +15,8 @@
 #define SEQUENCE_MASK_S 0x40
 #define SEQUENCE_MASK_R 0x80
 
+#define BAUDRATE B38400
+
 typedef struct {
     int baudrate;                  /* Velocidade de transmissão */
     unsigned int sequenceNumber;   /* Número de sequência da trama: 0, 1 */

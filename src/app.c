@@ -5,6 +5,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <sys/time.h>
 
 FILE* fp;
 
@@ -190,6 +191,7 @@ int file_transmission() {
         // Creates data packets
         size_t length = app->chunk_size;
         int index = 0;
+
         for (int i = 0; i < num_chunks; i++) {
             unsigned char data_field[app->chunk_size];
             if(i == num_chunks - 1) 
@@ -214,6 +216,7 @@ int file_transmission() {
         // Creates End Packet
         packet_size = control_packet(end, app->filename, st.st_size, &packet);
 
+        
         // Sends End packet
         if(llwrite(app->fileDescriptor, packet, packet_size) < 0){
             free(packet);
@@ -221,6 +224,8 @@ int file_transmission() {
             exit(1);
         }
 
+        
+        
         free(packet);
     }
 
@@ -288,7 +293,7 @@ int file_transmission() {
 
                     app->sequence_number = (app->sequence_number + 1) % 255; // Update sequence number
 
-                    // Write data to file array
+                    // Save data to file array
                     int data_index = 4;
                     memcpy(file_array + file_index, buffer + data_index, K);
                     file_index += app->chunk_size;

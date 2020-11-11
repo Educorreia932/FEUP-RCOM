@@ -38,6 +38,7 @@ int main(int argc, char **argv) {
 
 void parse_flags(int argc, char** argv) {
     app->chunk_size = MAX_CHUNK_SIZE;
+    llink->baudrate = BAUDRATE;
 
     for (int i = 1; i < argc; i++) {
         if (!strcmp(argv[i], ""))
@@ -53,10 +54,6 @@ void parse_flags(int argc, char** argv) {
 
         else if (!strcmp(argv[i], "-s") || !strcmp(argv[i], "--server"))
             app->status = RECEIVER;
-
-        // Baud Rate
-        else if (!strcmp(argv[i], "-b") || !strcmp(argv[i], "--baudrate"))
-            llink->baudrate = atoi(argv[i + 1]);
 
         // Timeout
         else if (!strcmp(argv[i], "-t") || !strcmp(argv[i], "--timeout"))

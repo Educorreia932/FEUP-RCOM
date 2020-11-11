@@ -17,4 +17,4 @@ client: clean main
 	@./main -c "/dev/ttyS0" --baudrate B38400 --timeout 5 --num_transmissions 3 --chunk_size 100 --file "../files/pinguim.gif"
 
 server: clean main
-	@./main -s "/dev/ttyS1" --baudrate B38400 --timeout 5 --num_transmissions 3 --chunk_size 100
+	@./main -s "/dev/ttyS0" --baudrate B38400 --timeout 5 --num_transmissions 3 --chunk_size 100
