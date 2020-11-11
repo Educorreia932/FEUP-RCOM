@@ -178,27 +178,28 @@ int file_transmission() {
             free(packet);
             perror("Failed to send start packet.\n");
             exit(1);
-        }
-        
+        } 
         free(packet);
 
-        char filearray[st.st_size];
-        fread(filearray, 1, st.st_size, fp); // Reads from file and stores in data_field
+        unsigned char file_array[st.st_size]; //where image is stored
+        if(fread(file_array, 1, st.st_size, fp) < 0){ // Reads from file and stores in file_array
+            perror("Failed to read from file.\n");
+            exit(1);
+        }
 
         // Calculate the number of chunks in which the file will be split
         int num_chunks = ceil(st.st_size / (double) app->chunk_size); 
 
         // Creates data packets
         size_t length = app->chunk_size;
-        int index = 0;
+        int file_index = 0;
 
         for (int i = 0; i < num_chunks; i++) {
-            unsigned char data_field[app->chunk_size];
-            if(i == num_chunks - 1) 
+            if(i == num_chunks - 1)  // Last iteration
                 length = st.st_size - (length * i) ;
             
-            packet_size = data_packet(filearray + index, length, &packet); // Prepares a data packet 
-            index += app->chunk_size;
+            packet_size = data_packet(file_array + file_index, length, &packet); // Prepares a data packet 
+            file_index += app->chunk_size;
 
             //Sends data packet
             if(llwrite(app->fileDescriptor, packet, packet_size) < 0){
@@ -223,9 +224,6 @@ int file_transmission() {
             perror("Failed to send end packet.\n");
             exit(1);
         }
-
-        
-        
         free(packet);
     }
 
