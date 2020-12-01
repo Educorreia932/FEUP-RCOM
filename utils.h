@@ -30,4 +30,6 @@ int parse_fields(char* arguments, struct fields* fields);
 
 void print_fields(struct fields fields);
 
-void parseFilePort(char * str);
+void parse_file_port(char* str, char** ip, int* port);
+
+int create_socket(char * ip, int port);

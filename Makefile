@@ -7,9 +7,8 @@ CFLAGS = -Wall -g
 main: 
 	@gcc ${CFLAGS} -o download download.c utils.c -lm
 
-
 clean:	
 	@rm -f download
 
 download: clean main
-	@./download "ftp://anonymous:rcom@ftp.up.pt/netlab1.fe.up.pt"
+	@./download "ftp://rcom:rcom@netlab1.fe.up.pt/pub.txt"

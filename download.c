@@ -25,30 +25,7 @@ int main(int argc, char** argv) {
 
     char* address = inet_ntoa(*((struct in_addr*) h->h_addr));
 
-    // TCP
-    int sockfd;
-    struct sockaddr_in server_addr;
-
-    // Server address handling
-
-    bzero((char*) &server_addr, sizeof(server_addr));
-    server_addr.sin_family = AF_INET;
-    server_addr.sin_addr.s_addr = inet_addr(address); /* 32 bit Internet address network byte ordered*/
-    server_addr.sin_port = htons(SERVER_PORT); /* server TCP port must be network byte ordered */
-
-    /* Open an TCP socket*/
-
-    if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-        perror("socket()");
-        exit(0);
-    }
-
-    /* Connect to the server */
-
-    if (connect(sockfd, (struct sockaddr*) &server_addr, sizeof(server_addr)) < 0) {
-        perror("connect()");
-        exit(0);
-    }
+    int sockfd = create_socket(address, SERVER_PORT);
 
     /* Read from server */
 
@@ -60,7 +37,8 @@ int main(int argc, char** argv) {
         printf("%s", buf);
     } while (buf[3] == '-');
 
-    if(buf[0] != '2'){  // not 220
+    // Success
+    if(buf[0] != '2'){  
         perror("Error in connection.\n");
         exit(1);
     }
@@ -150,7 +128,33 @@ int main(int argc, char** argv) {
 
     /* Get server port for file transfer */
 
-    parseFilePort(buf);
+    char* ip;
+    int port;
+
+    parse_file_port(buf, &ip, &port);
+    int sockdatafd = create_socket(ip, port);
+
+    // Write telnet host port
+
+    char command[512];
+
+    sprintf(command, "telnet %s %d\n", fields.host, port);
+
+    if (write(sockdatafd, "command", strlen(command)) < 0) {
+        perror("Failed to send command.\n");
+        exit(1);
+    }
+    
+    // Write retr ficheiro
+    
+    write(sockfd, "retr ", 5);
+
+    if (write(sockfd, fields.url, strlen(fields.url)) < 0){
+        perror("Failed to send url.\n");
+        exit(1);
+    }
+
+    write(sockfd, "\n", 1);
 
     close(sockfd);
 
