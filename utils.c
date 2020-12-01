@@ -124,3 +124,20 @@ int parse_fields(char* arguments, struct fields* fields) {
 
     return 0;
 }
+
+int download_file(int data_socket_fd, char* filename) {
+    FILE* fp = fopen(filename, "w");
+
+    char buf[MAX_LEN];
+    int num_bytes;
+
+    printf("Starting to download %s\n", filename);
+
+    while ((num_bytes = read(data_socket_fd, buf, MAX_LEN)))
+        fwrite(buf, num_bytes, 1, fp);
+
+    printf("Finished dowloading file\n");
+    fclose(fp);
+
+    return 0;
+}

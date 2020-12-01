@@ -33,3 +33,5 @@ void print_fields(struct fields fields);
 void parse_file_port(char* str, char** ip, int* port);
 
 int create_socket(char * ip, int port);
+
+int download_file(int data_socket_fd, char* filename);

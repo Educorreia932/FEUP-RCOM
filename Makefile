@@ -11,4 +11,4 @@ clean:
 	@rm -f download
 
 download: clean main
-	@./download "ftp://rcom:rcom@netlab1.fe.up.pt/pub.txt"
+	@./download "ftp://rcom:rcom@netlab1.fe.up.pt/files/pic1.jpg"

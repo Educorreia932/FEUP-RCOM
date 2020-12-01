@@ -132,7 +132,7 @@ int main(int argc, char** argv) {
     int port;
 
     parse_file_port(buf, &ip, &port);
-    int sockdatafd = create_socket(ip, port);
+    int data_socket_fd = create_socket(ip, port);
 
     // Write telnet host port
 
@@ -140,12 +140,12 @@ int main(int argc, char** argv) {
 
     sprintf(command, "telnet %s %d\n", fields.host, port);
 
-    if (write(sockdatafd, "command", strlen(command)) < 0) {
+    if (write(data_socket_fd, "command", strlen(command)) < 0) {
         perror("Failed to send command.\n");
         exit(1);
     }
     
-    // Write retr ficheiro
+    // Write retr <URL>
     
     write(sockfd, "retr ", 5);
 
@@ -156,6 +156,9 @@ int main(int argc, char** argv) {
 
     write(sockfd, "\n", 1);
 
+    download_file(data_socket_fd, fields.url);
+    
+    close(data_socket_fd);
     close(sockfd);
 
     return 0;
