@@ -6,10 +6,13 @@
 #include <netdb.h>
 #include <netinet/in.h>
 #include <sys/types.h>
+#include <unistd.h>
+#include <signal.h>
+#include <sys/socket.h>
 
 #define MAX_LEN 256
 #define h_addr h_addr_list[0] // The first address in h_addr_list.
-
+#define SERVER_PORT 21
 /**
  * Struct used to store fileds passes in arguments
 */
