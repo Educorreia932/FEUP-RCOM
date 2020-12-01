@@ -12,4 +12,4 @@ clean:
 	@rm -f download
 
 download: clean main
-	@./download "ftp://rcom:rcom@ftp.up.pt/netlab1.fe.up.pt"
+	@./download "ftp://anonymous:rcom@ftp.up.pt/netlab1.fe.up.pt"
