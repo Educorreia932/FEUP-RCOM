@@ -1,5 +1,14 @@
 #include "utils.h"
 
+void print_fields(struct fields fields){
+    puts("Arguments");
+    printf("User: %s\n", fields.user);
+    printf("Password: %s\n", fields.password);
+    printf("Host: %s\n", fields.host);
+    printf("URL: %s\n", fields.url);
+    puts("");
+}
+
 int parse_fields(char* arguments, struct fields* fields) {
     // Get protocol name
 
