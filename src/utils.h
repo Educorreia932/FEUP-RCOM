@@ -9,6 +9,9 @@
 #include <unistd.h>
 #include <signal.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
 
 #define MAX_LEN 256
 #define h_addr h_addr_list[0] // The first address in h_addr_list.
@@ -30,7 +33,7 @@ int parse_fields(char* arguments, struct fields* fields);
 
 void print_fields(struct fields fields);
 
-void parse_file_port(char* str, char** ip, int* port);
+int get_port(char* str);
 
 int create_socket(char * ip, int port);
 

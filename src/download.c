@@ -72,39 +72,42 @@ int main(int argc, char** argv) {
 
     // Check if it server sent "331 Please specify the password".
     // TODO: Check server other messages
-    if(buf[0] != '3'){
-        perror("Server didn't recognize user.\n");
-        exit(1);
+    if(buf[0] == '3'){ // Asking for password
+        
+        // Send password
+        if(write(sockfd, "pass ", 5) < 0){
+            perror("Failed to send pass.\n");
+            exit(1);
+        }
+
+        if(write(sockfd, fields.password, strlen(fields.password)) < 0){
+            perror("Failed to send password.\n");
+            exit(1);
+        }
+
+        if(write(sockfd, "\n", 1) < 0){
+            perror("Failed to send newline.\n");
+            exit(1);
+        }
+
+        // Read Response
+        do {
+            fgets(buf, MAX_LEN-1, fp);
+            printf("%s", buf);
+        } while (buf[3] == '-');
+
+        // Check if it server sent "230 Login successful."
+        // TODO: Check server other messages
+        if (buf[0] != '2') {
+            perror("Login was not successful.\n");
+            exit(1);
+        } 
     } 
-
-    // Send password
-    if(write(sockfd, "pass ", 5) < 0){
-        perror("Failed to send pass.\n");
+    else if(buf[0] != '2'){
+        perror("Failed sending user.\n");
         exit(1);
     }
 
-    if(write(sockfd, fields.password, strlen(fields.password)) < 0){
-        perror("Failed to send password.\n");
-        exit(1);
-    }
-
-    if(write(sockfd, "\n", 1) < 0){
-        perror("Failed to send newline.\n");
-        exit(1);
-    }
-
-    // Read Response
-    do {
-        fgets(buf, MAX_LEN-1, fp);
-        printf("%s", buf);
-    } while (buf[3] == '-');
-
-    // Check if it server sent "230 Login successful."
-    // TODO: Check server other messages
-    if (buf[0] != '2') {
-        perror("Login was not successful.\n");
-        exit(1);
-    } 
 
     // Enter passive mode
 
@@ -128,11 +131,8 @@ int main(int argc, char** argv) {
 
     /* Get server port for file transfer */
 
-    char* ip;
-    int port;
-
-    parse_file_port(buf, &ip, &port);
-    int data_socket_fd = create_socket(ip, port);
+    int port = get_port(buf);
+    int data_socket_fd = create_socket(address, port);
 
     // Write telnet host port
 

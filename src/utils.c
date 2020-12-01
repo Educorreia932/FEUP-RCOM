@@ -29,33 +29,24 @@ int create_socket(char* ip, int port) {
     return sockfd;
 }
 
-void parse_file_port(char* str, char** ip, int* port) {
+int get_port(char* str) {
+    int port;
     str += 27;  // Skip useless info
-
-    *ip = (char*) malloc(MAX_LEN);
     
     char* token = strtok(str, ",");
-    char dot = '.';
 
     for (int i=0; i <= 5; i++) {
-        if (i <= 3) {
-            strcat(*ip, token);
-
-            if (i != 3)
-                strncat(*ip, &dot, 1);
-        }
-
-        else if (i == 4)
-            *port = atoi(token) * 256;
+        if (i == 4)
+            port = atoi(token) * 256;
 
         else
-            *port += atoi(token); 
+            port += atoi(token); 
 
         token = strtok(NULL, ",");
     }
 
-    printf("IP   : %s\n", *ip);
-    printf("Port : %d\n", *port);
+    printf("Port : %d\n", port);
+    return port;
 }
 
 void print_fields(struct fields fields){
@@ -126,18 +117,33 @@ int parse_fields(char* arguments, struct fields* fields) {
 }
 
 int download_file(int data_socket_fd, char* filename) {
-    FILE* fp = fopen(filename, "w");
-
     char buf[MAX_LEN];
-    int num_bytes;
+    int bytes, fd = open("copy", O_WRONLY | O_CREAT | O_TRUNC, 0666);
 
     printf("Starting to download %s\n", filename);
 
-    while ((num_bytes = read(data_socket_fd, buf, MAX_LEN)))
-        fwrite(buf, num_bytes, 1, fp);
+    if (fd < 0)
+    {
+        perror("Creating file");
+        return -1;
+    }
+
+    while ((bytes = read(data_socket_fd, buf, MAX_LEN)) > 0)
+    {
+        if (write(fd, buf, bytes) < 0)
+        {
+            perror("Writing to file");
+            return -1;
+        }
+    }
+
+    if (bytes < 0)
+    {
+        perror("Reading file");
+        return -1;
+    }
 
     printf("Finished dowloading file\n");
-    fclose(fp);
 
     return 0;
 }
