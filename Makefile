@@ -5,4 +5,11 @@ CC = gcc
 CFLAGS = -Wall -g
 
 main: 
-	@gcc ${CFLAGS} -o download main.c utils.c -lm
+	@gcc ${CFLAGS} -o download download.c utils.c -lm
+
+
+clean:	
+	@rm -f download
+
+download: clean main
+	@./download "ftp://rcom:rcom@ftp.up.pt/netlab1.fe.up.pt"

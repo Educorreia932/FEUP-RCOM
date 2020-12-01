@@ -8,41 +8,38 @@ int parse_fields(char* arguments, struct fields* fields) {
         return -1;
     }
 
-    arguments += 6;
+    arguments += 6; // skip ftp://
 
     // Get user
     char* token = strtok(arguments, ":");
 
-    if (token == NULL) { // TODO: Anonymous?
-        perror("Couldn't parse the user\n");
-        return -1;
+    if (token == NULL) { // No user sent
+        strcpy(fields->user, "anonymous");  // Assume anon
+        strcpy(fields->user, "pass");
     }
 
-    printf("User: %s\n", token);
-    strcpy(fields->user, token);
+    
+    else{  
+        strcpy(fields->user, token);
 
-    // Get password
+        // Get password
+        token = strtok(NULL, "@");
 
-    token = strtok(NULL, "@");
-
-    if (token == NULL) {
-        perror("Couldn't parse the password\n");
-        return -1;
+        if (token == NULL) {
+            perror("Couldn't parse the password\n");
+            return -1;
+        }
+        
+        strcpy(fields->password, token);
     }
-
-    printf("Password: %s\n", token);
-    strcpy(fields->password, token);
 
     // Get host
-
     token = strtok(NULL, "/");
 
     if (token == NULL) {
         perror("Couldn't parse the host\n");
         return -1;
     }
-
-    printf("Host: %s\n", token);
     strcpy(fields->host, token);
 
     // Get URL path
@@ -53,8 +50,6 @@ int parse_fields(char* arguments, struct fields* fields) {
         perror("Couldn't parse the URL path\n");
         return -1;
     }
-
-    printf("URL path: %s\n", token);
     strcpy(fields->url, token);
 
     return 0;

@@ -11,4 +11,8 @@ struct fields {
     char host[MAX_LEN];
 };
 
+/**
+ * Parses arguments of a "ftp://[<user>:<password>@]<host>/<url-path>" string 
+*/
+
 int parse_fields(char* arguments, struct fields* fields);
