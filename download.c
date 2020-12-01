@@ -48,14 +48,15 @@ int main(int argc, char** argv) {
         exit(0);
     }
 
-    char buf[MAX_LEN];
+    /* Read from server */
 
+    char buf[MAX_LEN];
     FILE *fp = fdopen(sockfd, "r");
 
     do {
         fgets(buf, MAX_LEN-1, fp);
         printf("%s", buf);
-    } while (!strncmp(buf, "220-", 4));
+    } while (buf[3] == '-');
 
     close(sockfd);
 
