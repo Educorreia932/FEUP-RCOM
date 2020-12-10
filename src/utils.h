@@ -12,12 +12,12 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
-
 #define MAX_LEN 256
 #define h_addr h_addr_list[0] // The first address in h_addr_list.
 #define SERVER_PORT 21
+
 /**
- * Struct used to store fileds passes in arguments
+ * Struct used to store fields passed in arguments
 */
 struct fields {
     char user[MAX_LEN];
