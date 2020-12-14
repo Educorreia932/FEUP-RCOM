@@ -1,7 +1,7 @@
 #include "utils.h"
 
-#define STYLE_BOLD         "\033[1m"
-#define STYLE_NO_BOLD      "\033[22m"
+#define STYLE_BOLD "\033[1m"
+#define STYLE_NO_BOLD "\033[22m"
 
 int create_socket(char* ip, int port) {
     int sockfd;
@@ -11,9 +11,9 @@ int create_socket(char* ip, int port) {
     bzero((char*) &server_addr, sizeof(server_addr));
     server_addr.sin_family = AF_INET;
     server_addr.sin_addr.s_addr = inet_addr(ip); /* 32 bit Internet address network byte ordered*/
-    server_addr.sin_port = htons(port); /* server TCP port must be network byte ordered */
+    server_addr.sin_port = htons(port);          /* server TCP port must be network byte ordered */
 
-    // Open an TCP socket 
+    // Open an TCP socket
 
     if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
         perror("socket()");
@@ -31,16 +31,16 @@ int create_socket(char* ip, int port) {
 
 int get_port(char* str) {
     int port;
-    str += 27;  // Skip useless info
-    
+    str += 27; // Skip useless info
+
     char* token = strtok(str, ",");
 
-    for (int i=0; i <= 5; i++) {
+    for (int i = 0; i <= 5; i++) {
         if (i == 4)
             port = atoi(token) * 256;
 
         else
-            port += atoi(token); 
+            port += atoi(token);
 
         token = strtok(NULL, ",");
     }
@@ -49,7 +49,7 @@ int get_port(char* str) {
     return port;
 }
 
-void print_fields(struct fields fields){
+void print_fields(struct fields fields) {
     printf(STYLE_BOLD);
     puts("Arguments\n");
     printf(STYLE_NO_BOLD);
@@ -73,12 +73,12 @@ int parse_fields(char* arguments, struct fields* fields) {
     // Get user
     char* token = strtok(arguments, ":");
 
-    if (token == NULL) { // No user sent
-        strcpy(fields->user, "anonymous");  // Assume anon
+    if (token == NULL) {                   // No user sent
+        strcpy(fields->user, "anonymous"); // Assume anon
         strcpy(fields->user, "pass");
     }
-    
-    else {  
+
+    else {
         strcpy(fields->user, token);
 
         // Get password
@@ -88,7 +88,7 @@ int parse_fields(char* arguments, struct fields* fields) {
             perror("Couldn't parse the password\n");
             return -1;
         }
-        
+
         strcpy(fields->password, token);
     }
 
@@ -118,32 +118,15 @@ int parse_fields(char* arguments, struct fields* fields) {
 
 int download_file(int data_socket_fd, char* filename) {
     char buf[MAX_LEN];
-    int bytes, fd = open("copy", O_WRONLY | O_CREAT | O_TRUNC, 0666);
+    int bytes;
+    FILE* file = fopen("LATEST.xml", "w");
 
     printf("Starting to download %s\n", filename);
 
-    if (fd < 0)
-    {
-        perror("Creating file");
-        return -1;
-    }
+ 	while ((bytes = read(data_socket_fd, buf, sizeof(buf))) > 0) 
+    	bytes = fwrite(buf, bytes, 1, file);
 
-    while ((bytes = read(data_socket_fd, buf, MAX_LEN)) > 0)
-    {
-        if (write(fd, buf, bytes) < 0)
-        {
-            perror("Writing to file");
-            return -1;
-        }
-    }
-
-    if (bytes < 0)
-    {
-        perror("Reading file");
-        return -1;
-    }
-
-    printf("Finished dowloading file\n");
+    printf("Finished downloading %s\n", filename);
 
     return 0;
 }

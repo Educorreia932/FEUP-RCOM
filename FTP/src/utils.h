@@ -1,18 +1,18 @@
+#include <arpa/inet.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <netdb.h>
+#include <netinet/in.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <arpa/inet.h>
-#include <errno.h>
-#include <netdb.h>
-#include <netinet/in.h>
-#include <sys/types.h>
-#include <unistd.h>
-#include <signal.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
-#include <fcntl.h>
+#include <sys/types.h>
+#include <unistd.h>
 
-#define MAX_LEN 256
+#define MAX_LEN 1000
 #define h_addr h_addr_list[0] // The first address in h_addr_list.
 #define SERVER_PORT 21
 
@@ -35,6 +35,6 @@ void print_fields(struct fields fields);
 
 int get_port(char* str);
 
-int create_socket(char * ip, int port);
+int create_socket(char* ip, int port);
 
 int download_file(int data_socket_fd, char* filename);

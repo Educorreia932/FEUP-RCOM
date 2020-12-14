@@ -136,11 +136,11 @@ int main(int argc, char** argv) {
 
     // Write telnet host port
 
-    char command[512];
+    char command[2000];
 
     sprintf(command, "telnet %s %d\n", fields.host, port);
 
-    if (write(data_socket_fd, "command", strlen(command)) < 0) {
+    if (write(sockfd, command, strlen(command)) < 0) {
         perror("Failed to send command.\n");
         exit(1);
     }

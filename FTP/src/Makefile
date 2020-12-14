@@ -11,4 +11,4 @@ clean:
 	@rm -f download
 
 download: clean main
-	@./download "ftp://anonymous:rcom@ftp.up.pt/CPAN/README.html"
+	@./download "ftp://ftp:ftp@ftp.up.pt/mirrors/ftp.gnome.org/LATEST.xml"
