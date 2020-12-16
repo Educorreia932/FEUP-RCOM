@@ -12,7 +12,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#define MAX_LEN 1000
+#define MAX_LEN 256
 #define h_addr h_addr_list[0] // The first address in h_addr_list.
 #define SERVER_PORT 21
 
@@ -37,4 +37,8 @@ int get_port(char* str);
 
 int create_socket(char* ip, int port);
 
-int download_file(int data_socket_fd, char* filepath);
+int get_file_size(char* response);
+
+int download_file(int file_size, int data_socket_fd, char* filepath);
+
+void progress_bar(float percentage);

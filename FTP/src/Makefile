@@ -11,4 +11,4 @@ clean:
 	@rm -f download
 
 download: clean main
-	@./download "ftp://ftp.isc.org/welcome.msg"
+	@./download "ftp://ftp.isc.org/ls-lR.gz"

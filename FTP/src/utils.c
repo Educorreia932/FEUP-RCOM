@@ -121,9 +121,17 @@ int parse_fields(char* arguments, struct fields* fields) {
     return 0;
 }
 
-int download_file(int data_socket_fd, char* filepath) {
+int get_file_size(char* response) {
+    char* s = strrchr(response, '(') + 1;
+    int file_size = atoi(strtok(s, " "));
+
+    return file_size;
+}
+
+int download_file(int file_size, int data_socket_fd, char* filepath) {
     char buf[MAX_LEN];
     int bytes;
+    float total_bytes = 0;
 
     char *filename = strrchr(filepath, '/');
 
@@ -139,7 +147,8 @@ int download_file(int data_socket_fd, char* filepath) {
 
  	while ((bytes = read(data_socket_fd, buf, sizeof(buf))) > 0) {
     	bytes = fwrite(buf, 1, bytes, file);
-        printf("Wrote %d bytes\n", bytes);
+        total_bytes += bytes;
+        float percentage = (float) total_bytes / file_size * 100;
     }
 
     fclose(file);
@@ -147,4 +156,18 @@ int download_file(int data_socket_fd, char* filepath) {
     printf("\nFinished downloading %s\n", filename);
 
     return 0;
+}
+
+void progress_bar(float percentage) {
+    printf("[");
+
+    for (int i = 0; i < 50; i++) {
+        if (percentage / 2 < i) 
+            printf(" ");
+
+        else
+            printf("x");
+    }
+
+    printf("] %f%% complete\n", percentage);
 }

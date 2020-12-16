@@ -165,7 +165,8 @@ int main(int argc, char** argv) {
     if (buf[0] != '2' && buf[0] != '1') 
         exit(1);
 
-    download_file(data_socket_fd, fields.url);
+    int file_size = get_file_size(buf);
+    download_file(file_size, data_socket_fd, fields.url);
     
     close(data_socket_fd);
     close(sockfd);
