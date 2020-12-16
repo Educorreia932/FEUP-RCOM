@@ -8,7 +8,10 @@ int main(int argc, char** argv) {
 
     // Parse & store arguments
     struct fields fields;
-    parse_fields(argv[1], &fields);
+    if(parse_fields(argv[1], &fields) < 0 ){
+        puts("Aborting\n");
+        exit(1);
+    }
     print_fields(fields);
 
     // Host
@@ -20,8 +23,7 @@ int main(int argc, char** argv) {
     }
 
     printf("Host name  : %s\n", h->h_name);
-    printf("IP Address : %s\n", inet_ntoa(*((struct in_addr*) h->h_addr)));
-    puts("");
+    printf("IP Address : %s\n\n", inet_ntoa(*((struct in_addr*) h->h_addr)));
 
     char* address = inet_ntoa(*((struct in_addr*) h->h_addr));
 
@@ -39,7 +41,7 @@ int main(int argc, char** argv) {
 
     // Success
     if(buf[0] != '2'){  
-        perror("Error in connection.\n");
+        printf("ERROR: Error in connection.\n");
         exit(1);
     }
 
@@ -50,17 +52,17 @@ int main(int argc, char** argv) {
 
     // Send user
     if(write(sockfd, "user ", 5) < 0){
-        perror("Failed to send user.\n");
+        printf("ERROR: Failed to send user.\n");
         exit(1);
     }
 
     if(write(sockfd, fields.user, strlen(fields.user)) < 0){
-        perror("Failed to send username.\n");
+        printf("ERROR: Failed to send username.\n");
         exit(1);
     }
 
     if(write(sockfd, "\n", 1) < 0){
-        perror("Failed to send newline.\n");
+        printf("ERROR: Failed to send newline.\n");
         exit(1);
     }
 
@@ -76,17 +78,25 @@ int main(int argc, char** argv) {
         
         // Send password
         if(write(sockfd, "pass ", 5) < 0){
-            perror("Failed to send pass.\n");
+            printf("ERROR: Failed to send password.\n");
             exit(1);
         }
 
+        //Check if password is set
+        if(!strcmp(fields.password, "")){
+            char pass[MAX_LEN];
+            printf("\nPlease input a password: ");
+            fgets(pass, sizeof(pass), stdin);
+            strcpy(fields.password, pass);
+        }
+
         if(write(sockfd, fields.password, strlen(fields.password)) < 0){
-            perror("Failed to send password.\n");
+            printf("ERROR: Failed to send password.\n");
             exit(1);
         }
 
         if(write(sockfd, "\n", 1) < 0){
-            perror("Failed to send newline.\n");
+            printf("ERROR: Failed to send newline.\n");
             exit(1);
         }
 
@@ -99,12 +109,12 @@ int main(int argc, char** argv) {
         // Check if it server sent "230 Login successful."
         // TODO: Check server other messages
         if (buf[0] != '2') {
-            perror("Login was not successful.\n");
+            printf("ERROR: Login was not successful.\n");
             exit(1);
         } 
     } 
     else if(buf[0] != '2'){
-        perror("Failed sending user.\n");
+        printf("ERROR: Failed sending user.\n");
         exit(1);
     }
 
@@ -113,7 +123,7 @@ int main(int argc, char** argv) {
 
     // send pasv
     if(write(sockfd, "pasv\n", 5) < 0){
-        perror("Failed to send pasv.\n");
+        printf("ERROR: Failed to send pasv.\n");
         exit(1);
     }
 
@@ -125,7 +135,7 @@ int main(int argc, char** argv) {
 
     /* Check if server sent "227 Entering Passive Mode (193,136,28,12,19,91)" */
     if (buf[0] != '2') {
-        perror("Failed to enter passive mode.\n");
+        printf("ERROR: Failed to enter passive mode.\n");
         exit(1);
     } 
 
@@ -141,7 +151,7 @@ int main(int argc, char** argv) {
     sprintf(command, "telnet %s %d\n", fields.host, port);
 
     if (write(sockfd, command, strlen(command)) < 0) {
-        perror("Failed to send command.\n");
+        printf("ERROR: Failed to send command.\n");
         exit(1);
     }
     
@@ -149,7 +159,7 @@ int main(int argc, char** argv) {
     write(sockfd, "retr ", 5);
 
     if (write(sockfd, fields.url, strlen(fields.url)) < 0){
-        perror("Failed to send url.\n");
+        printf("ERROR: Failed to send url.\n");
         exit(1);
     }
 

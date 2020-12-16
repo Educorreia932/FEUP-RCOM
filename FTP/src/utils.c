@@ -64,39 +64,40 @@ int parse_fields(char* arguments, struct fields* fields) {
     // Get protocol name
 
     if (strncmp(arguments, "ftp://", 6)) {
-        perror("Couldn't parse the protocol name\n");
+        printf("ERROR: Couldn't parse the protocol name\n");
         return -1;
     }
 
     arguments += 6; // Skip ftp://
+    char * token;
 
     // Get user
-    char* token = strtok(arguments, ":");
-
-    if (token == NULL) {                   // No user sent
+    if(strstr(arguments, "@") == NULL){
+        puts("No username found. Assuming anonymous user.");
         strcpy(fields->user, "anonymous"); // Assume anon
-        strcpy(fields->user, "pass");
+
+        // Get host
+        token = strtok(arguments, "/");
     }
-
-    else {
-        strcpy(fields->user, token);
-
-        // Get password
-        token = strtok(NULL, "@");
-
-        if (token == NULL) {
-            perror("Couldn't parse the password\n");
-            return -1;
+    else{
+        if(strstr(arguments, ":") == NULL){ // No password provided
+            token = strtok(arguments, "@");
+            strcpy(fields->user, token);
+            strcpy(fields->password, "");
+        }
+        else{
+            token = strtok(arguments, ":");
+            strcpy(fields->user, token);
+            token = strtok(NULL, "@");
+            strcpy(fields->password, token);
         }
 
-        strcpy(fields->password, token);
+        // Get host
+        token = strtok(NULL, "/");
     }
 
-    // Get host
-    token = strtok(NULL, "/");
-
     if (token == NULL) {
-        perror("Couldn't parse the host\n");
+        printf("ERROR: Couldn't parse the host\n");
         return -1;
     }
 
@@ -107,7 +108,7 @@ int parse_fields(char* arguments, struct fields* fields) {
     token = strtok(NULL, "");
 
     if (token == NULL) {
-        perror("Couldn't parse the URL path\n");
+        printf("ERROR: Couldn't parse the URL path\n");
         return -1;
     }
 
