@@ -116,17 +116,25 @@ int parse_fields(char* arguments, struct fields* fields) {
     return 0;
 }
 
-int download_file(int data_socket_fd, char* filename) {
+int download_file(int data_socket_fd, char* filepath) {
     char buf[MAX_LEN];
     int bytes;
-    FILE* file = fopen("LATEST.xml", "w");
 
-    printf("Starting to download %s\n", filename);
+    char *filename = strrchr(filepath, '/') + 1;
 
- 	while ((bytes = read(data_socket_fd, buf, sizeof(buf))) > 0) 
-    	bytes = fwrite(buf, bytes, 1, file);
+    FILE* file = fopen(filename, "w");
 
-    printf("Finished downloading %s\n", filename);
+    printf("Starting to download %s\n\n", filename);
+
+ 	while ((bytes = read(data_socket_fd, buf, sizeof(buf))) > 0) {
+        printf("Read %d / ", bytes);
+    	bytes = fwrite(buf, 1, bytes, file);
+        printf("Wrote %d bytes\n", bytes);
+    }
+
+    fclose(file);
+
+    printf("\nFinished downloading %s\n", filename);
 
     return 0;
 }

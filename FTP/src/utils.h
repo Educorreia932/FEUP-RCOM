@@ -37,4 +37,4 @@ int get_port(char* str);
 
 int create_socket(char* ip, int port);
 
-int download_file(int data_socket_fd, char* filename);
+int download_file(int data_socket_fd, char* filepath);
