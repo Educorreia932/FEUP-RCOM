@@ -11,4 +11,4 @@ clean:
 	@rm -f download
 
 download: clean main
-	@./download "ftp://ftp:ftp@ftp.up.pt/mirrors/ftp.gnome.org/LATEST.xml"
+	@./download "ftp://ftp:ftp@ftp.isc.org/welcome.msg"

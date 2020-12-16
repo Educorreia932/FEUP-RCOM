@@ -145,8 +145,7 @@ int main(int argc, char** argv) {
         exit(1);
     }
     
-    // Write retr <URL>
-    
+    // Write retr <URL>    
     write(sockfd, "retr ", 5);
 
     if (write(sockfd, fields.url, strlen(fields.url)) < 0){

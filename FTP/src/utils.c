@@ -120,7 +120,14 @@ int download_file(int data_socket_fd, char* filepath) {
     char buf[MAX_LEN];
     int bytes;
 
-    char *filename = strrchr(filepath, '/') + 1;
+    char *filename = strrchr(filepath, '/');
+
+    if (filename == NULL)
+        filename = filepath;
+
+    else
+        filename += 1;
+
 
     FILE* file = fopen(filename, "w");
 
