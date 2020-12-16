@@ -156,7 +156,15 @@ int main(int argc, char** argv) {
     }
 
     write(sockfd, "\n", 1);
-   
+
+    do {
+        fgets(buf, MAX_LEN - 1, fp);
+        printf("%s", buf);
+    } while (buf[3] == '-');
+
+    if (buf[0] != '2' && buf[0] != '1') 
+        exit(1);
+
     download_file(data_socket_fd, fields.url);
     
     close(data_socket_fd);
