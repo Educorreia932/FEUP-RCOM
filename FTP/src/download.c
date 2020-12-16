@@ -51,12 +51,12 @@ int main(int argc, char** argv) {
     */
 
     // Send user
-    if(write(sockfd, "user ", 5) < 0){
+    if (write(sockfd, "user ", 5) < 0){
         printf("ERROR: Failed to send user.\n");
         exit(1);
     }
 
-    if(write(sockfd, fields.user, strlen(fields.user)) < 0){
+    if (write(sockfd, fields.user, strlen(fields.user)) < 0){
         printf("ERROR: Failed to send username.\n");
         exit(1);
     }
@@ -75,7 +75,6 @@ int main(int argc, char** argv) {
     // Check if it server sent "331 Please specify the password".
     // TODO: Check server other messages
     if(buf[0] == '3'){ // Asking for password
-        
         // Send password
         if(write(sockfd, "pass ", 5) < 0){
             printf("ERROR: Failed to send password.\n");
@@ -84,10 +83,15 @@ int main(int argc, char** argv) {
 
         //Check if password is set
         if(!strcmp(fields.password, "")){
-            char pass[MAX_LEN];
-            printf("\nPlease input a password: ");
-            fgets(pass, sizeof(pass), stdin);
-            strcpy(fields.password, pass);
+            if(!strcmp(fields.user, "anonymous")) 
+                strcpy(fields.password, "");
+
+            else {
+                char pass[MAX_LEN];
+                printf("\nPlease input a password: ");
+                fgets(pass, sizeof(pass), stdin);
+                strcpy(fields.password, pass);
+            }
         }
 
         if(write(sockfd, fields.password, strlen(fields.password)) < 0){
@@ -107,7 +111,6 @@ int main(int argc, char** argv) {
         } while (buf[3] == '-');
 
         // Check if it server sent "230 Login successful."
-        // TODO: Check server other messages
         if (buf[0] != '2') {
             printf("ERROR: Login was not successful.\n");
             exit(1);
@@ -129,7 +132,7 @@ int main(int argc, char** argv) {
 
     // Read Response
     do {
-        fgets(buf, MAX_LEN-1, fp);
+        fgets(buf, MAX_LEN - 1, fp);
         printf("%s", buf);
     } while (buf[3] == '-');
 
@@ -143,28 +146,17 @@ int main(int argc, char** argv) {
 
     int port = get_port(buf);
     int data_socket_fd = create_socket(address, port);
-
-    // Write telnet host port
-
-    char command[2000];
-
-    sprintf(command, "telnet %s %d\n", fields.host, port);
-
-    if (write(sockfd, command, strlen(command)) < 0) {
-        printf("ERROR: Failed to send command.\n");
-        exit(1);
-    }
     
     // Write retr <URL>    
     write(sockfd, "retr ", 5);
 
     if (write(sockfd, fields.url, strlen(fields.url)) < 0){
-        printf("ERROR: Failed to send url.\n");
+        printf("ERROR: Failed to send URL.\n");
         exit(1);
     }
 
     write(sockfd, "\n", 1);
-
+   
     download_file(data_socket_fd, fields.url);
     
     close(data_socket_fd);

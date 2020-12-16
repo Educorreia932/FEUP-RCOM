@@ -61,6 +61,9 @@ void print_fields(struct fields fields) {
 }
 
 int parse_fields(char* arguments, struct fields* fields) {
+    strcpy(fields->user, "anonymous"); // Assume anon
+    strcpy(fields->password, ""); // Assume anon
+
     // Get protocol name
 
     if (strncmp(arguments, "ftp://", 6)) {
@@ -85,6 +88,7 @@ int parse_fields(char* arguments, struct fields* fields) {
             strcpy(fields->user, token);
             strcpy(fields->password, "");
         }
+        
         else{
             token = strtok(arguments, ":");
             strcpy(fields->user, token);
@@ -129,13 +133,11 @@ int download_file(int data_socket_fd, char* filepath) {
     else
         filename += 1;
 
-
     FILE* file = fopen(filename, "w");
 
     printf("Starting to download %s\n\n", filename);
 
  	while ((bytes = read(data_socket_fd, buf, sizeof(buf))) > 0) {
-        printf("Read %d / ", bytes);
     	bytes = fwrite(buf, 1, bytes, file);
         printf("Wrote %d bytes\n", bytes);
     }
