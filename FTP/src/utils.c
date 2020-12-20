@@ -56,9 +56,9 @@ int get_port(char* str) {
     return port;
 }
 
-int parse_fields(char* arguments, struct fields* fields) {
-    strcpy(fields->user, "anonymous"); // Assume anon
-    strcpy(fields->password, "");      // Assume anon
+int parse_url(char* arguments, struct url* url) {
+    strcpy(url->user, "anonymous"); // Assume anon
+    strcpy(url->password, "");      // Assume anon
 
     // Get protocol name
 
@@ -73,22 +73,22 @@ int parse_fields(char* arguments, struct fields* fields) {
     // Get user
     if (strstr(arguments, "@") == NULL) {
         puts("No username found. Assuming anonymous user.");
-        strcpy(fields->user, "anonymous"); // Assume anon
+        strcpy(url->user, "anonymous"); // Assume anon
 
         // Get host
         token = strtok(arguments, "/");
     } else {
         if (strstr(arguments, ":") == NULL) { // No password provided
             token = strtok(arguments, "@");
-            strcpy(fields->user, token);
-            strcpy(fields->password, "");
+            strcpy(url->user, token);
+            strcpy(url->password, "");
         }
 
         else {
             token = strtok(arguments, ":");
-            strcpy(fields->user, token);
+            strcpy(url->user, token);
             token = strtok(NULL, "@");
-            strcpy(fields->password, token);
+            strcpy(url->password, token);
         }
 
         // Get host
@@ -100,18 +100,18 @@ int parse_fields(char* arguments, struct fields* fields) {
         return -1;
     }
 
-    strcpy(fields->host, token);
+    strcpy(url->host, token);
 
-    // Get URL path
+    // Get file path
 
     token = strtok(NULL, "");
 
     if (token == NULL) {
-        printf("ERROR: Couldn't parse the URL path\n");
+        printf("ERROR: Couldn't parse the filepath.\n");
         return -1;
     }
 
-    strcpy(fields->url, token);
+    strcpy(url->filepath, token);
 
     return 0;
 }

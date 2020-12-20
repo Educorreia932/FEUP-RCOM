@@ -19,17 +19,17 @@
 /**
  * Struct used to store fields passed in arguments
 */
-struct fields {
+struct url {
     char user[50];
     char password[50];
-    char url[100];
+    char filepath[100];
     char host[50];
 };
 
 /**
- * Parses arguments of a "ftp://[<user>:<password>@]<host>/<url-path>" string 
+ * Parses arguments of a "ftp://[<user>:<password>@]<host>/<file-path>" string 
 */
-int parse_fields(char* arguments, struct fields* fields);
+int parse_url(char* arguments, struct url* url);
 
 int get_port(char* str);
 

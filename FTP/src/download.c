@@ -7,14 +7,14 @@ int main(int argc, char** argv) {
     }
 
     // Parse & store arguments
-    struct fields fields;
-    if (parse_fields(argv[1], &fields) < 0) {
+    struct url url;
+    if (parse_url(argv[1], &url) < 0) {
         puts("Aborting\n");
         exit(1);
     }
 
     struct hostent* h;
-    if ((h = gethostbyname(fields.host)) == NULL) {
+    if ((h = gethostbyname(url.host)) == NULL) {
         herror("gethostbyname");
         exit(1);
     }
@@ -22,10 +22,10 @@ int main(int argc, char** argv) {
     char* address = inet_ntoa(*((struct in_addr*) h->h_addr));
 
     // Print info
-    printf("User:       %s\n", fields.user);
+    printf("User:       %s\n", url.user);
     puts("Password:   *****");
-    printf("Host:       %s\n", fields.host);
-    printf("URL:        %s\n", fields.url);
+    printf("Host:       %s\n", url.host);
+    printf("Filepath:        %s\n", url.filepath);
     printf("Host name:  %s\n", h->h_name);
     printf("IP Address: %s\n", address);
     printf("Port:       %d\n\n", SERVER_PORT);
@@ -47,7 +47,7 @@ int main(int argc, char** argv) {
 
     // Send User
     char buf[MAX_LEN];
-    sprintf(buf, "user %s\n", fields.user);
+    sprintf(buf, "user %s\n", url.user);
     if (write(sockfd, buf, strlen(buf)) < 0) {
         printf("ERROR: Failed to send user.\n");
         exit(1);
@@ -59,17 +59,17 @@ int main(int argc, char** argv) {
     // Check if it server sent "331 Please specify the password".
     if (res == '3') {
         //Check if password is set
-        if (!strcmp(fields.password, "")) {
-            if (strcmp(fields.user, "anonymous")) {
+        if (!strcmp(url.password, "")) {
+            if (strcmp(url.user, "anonymous")) {
                 // Ask for user password
                 printf("\nPlease input a password: ");
                 char pass[MAX_LEN];
                 fgets(pass, sizeof(pass), stdin);
-                strcpy(fields.password, pass);
+                strcpy(url.password, pass);
             }
         }
         // Send password
-        sprintf(buf, "pass %s\n", fields.password);
+        sprintf(buf, "pass %s\n", url.password);
         if (write(sockfd, buf, strlen(buf)) < 0) {
             printf("ERROR: Failed to send password.\n");
             exit(1);
@@ -102,7 +102,7 @@ int main(int argc, char** argv) {
     // Open socket
     int data_socket_fd = create_socket(address, get_port(buf));
     // Send retr command
-    sprintf(buf, "retr %s\n", fields.url);
+    sprintf(buf, "retr %s\n", url.filepath);
     if (write(sockfd, buf, strlen(buf)) < 0) {
         printf("ERROR: Failed to send retr command.\n");
         exit(1);
@@ -118,7 +118,7 @@ int main(int argc, char** argv) {
         exit(1);
     }
 
-    download_file(get_file_size(buf), data_socket_fd, fields.url);
+    download_file(get_file_size(buf), data_socket_fd, url.filepath);
     close(data_socket_fd);
     close(sockfd);
 
