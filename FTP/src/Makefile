@@ -11,4 +11,4 @@ clean:
 	@rm -f download
 
 download: clean main
-	@./download "ftp://ftp.isc.org/ls-lR.gz"
+	@./download "ftp://ftp:frp@ftp.up.pt/pub/ubuntu/project/ubuntu-archive-keyring.gpg.sig"

@@ -3,6 +3,16 @@
 #define STYLE_BOLD "\033[1m"
 #define STYLE_NO_BOLD "\033[22m"
 
+char readFromSocket(FILE* fp) {
+    char buf[MAX_LEN];
+    do {
+        fgets(buf, MAX_LEN - 1, fp);
+        printf("%s", buf);
+    } while (buf[3] == '-');
+
+    return buf[0];
+}
+
 int create_socket(char* ip, int port) {
     int sockfd;
     struct sockaddr_in server_addr;
@@ -35,34 +45,20 @@ int get_port(char* str) {
 
     char* token = strtok(str, ",");
 
-    for (int i = 0; i <= 5; i++) {
-        if (i == 4)
-            port = atoi(token) * 256;
-
-        else
-            port += atoi(token);
-
+    for (int i = 0; i < 4; i++)
         token = strtok(NULL, ",");
-    }
 
-    printf("Port : %d\n", port);
+    port = atoi(token) * 256;
+    token = strtok(NULL, ",");
+    port += atoi(token);
+
+    printf("\nPort : %d\n\n", port);
     return port;
-}
-
-void print_fields(struct fields fields) {
-    printf(STYLE_BOLD);
-    puts("Arguments\n");
-    printf(STYLE_NO_BOLD);
-    printf("User     : %s\n", fields.user);
-    printf("Password : %s\n", fields.password);
-    printf("Host     : %s\n", fields.host);
-    printf("URL      : %s\n", fields.url);
-    puts("");
 }
 
 int parse_fields(char* arguments, struct fields* fields) {
     strcpy(fields->user, "anonymous"); // Assume anon
-    strcpy(fields->password, ""); // Assume anon
+    strcpy(fields->password, "");      // Assume anon
 
     // Get protocol name
 
@@ -72,24 +68,23 @@ int parse_fields(char* arguments, struct fields* fields) {
     }
 
     arguments += 6; // Skip ftp://
-    char * token;
+    char* token;
 
     // Get user
-    if(strstr(arguments, "@") == NULL){
+    if (strstr(arguments, "@") == NULL) {
         puts("No username found. Assuming anonymous user.");
         strcpy(fields->user, "anonymous"); // Assume anon
 
         // Get host
         token = strtok(arguments, "/");
-    }
-    else{
-        if(strstr(arguments, ":") == NULL){ // No password provided
+    } else {
+        if (strstr(arguments, ":") == NULL) { // No password provided
             token = strtok(arguments, "@");
             strcpy(fields->user, token);
             strcpy(fields->password, "");
         }
-        
-        else{
+
+        else {
             token = strtok(arguments, ":");
             strcpy(fields->user, token);
             token = strtok(NULL, "@");
@@ -131,29 +126,32 @@ int get_file_size(char* response) {
 int download_file(int file_size, int data_socket_fd, char* filepath) {
     char buf[MAX_LEN];
     int bytes;
-    float total_bytes = 0;
+    float total_bytes = 0, percentage = 0;
 
-    char *filename = strrchr(filepath, '/');
+    char* filename = strrchr(filepath, '/');
 
     if (filename == NULL)
         filename = filepath;
-
     else
         filename += 1;
 
     FILE* file = fopen(filename, "w");
-
-    printf("Starting to download %s\n\n", filename);
-
- 	while ((bytes = read(data_socket_fd, buf, sizeof(buf))) > 0) {
-    	bytes = fwrite(buf, 1, bytes, file);
-        total_bytes += bytes;
-        float percentage = (float) total_bytes / file_size * 100;
+    if (file == NULL) {
+        printf("ERROR: Failed to open file.\n");
+        exit(1);
     }
 
-    fclose(file);
+    printf("\nStarting to download %s\n\n", filename);
+    progress_bar(percentage);
+    while ((bytes = read(data_socket_fd, buf, sizeof(buf))) > 0) {
+        bytes = fwrite(buf, 1, bytes, file);
+        total_bytes += bytes;
+        percentage = (float) total_bytes / file_size * 100;
+        progress_bar(percentage);
+    }
+    printf("\nFinished downloading %s\n\n", filename);
 
-    printf("\nFinished downloading %s\n", filename);
+    fclose(file);
 
     return 0;
 }
@@ -162,12 +160,12 @@ void progress_bar(float percentage) {
     printf("[");
 
     for (int i = 0; i < 50; i++) {
-        if (percentage / 2 < i) 
+        if (percentage / 2 < i)
             printf(" ");
 
         else
             printf("x");
     }
 
-    printf("] %f%% complete\n", percentage);
+    printf("] %.2f%% complete\n", percentage);
 }

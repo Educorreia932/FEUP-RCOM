@@ -1,46 +1,39 @@
 #include "utils.h"
 
 int main(int argc, char** argv) {
-    if(argc != 2){
+    if (argc != 2) {
         printf("Usage download ftp://[<user>:<password>@]<host>/<url-path>\n");
         exit(1);
     }
 
     // Parse & store arguments
     struct fields fields;
-    if(parse_fields(argv[1], &fields) < 0 ){
+    if (parse_fields(argv[1], &fields) < 0) {
         puts("Aborting\n");
         exit(1);
     }
-    print_fields(fields);
 
-    // Host
     struct hostent* h;
-
     if ((h = gethostbyname(fields.host)) == NULL) {
         herror("gethostbyname");
         exit(1);
     }
-
-    printf("Host name  : %s\n", h->h_name);
-    printf("IP Address : %s\n\n", inet_ntoa(*((struct in_addr*) h->h_addr)));
-
     char* address = inet_ntoa(*((struct in_addr*) h->h_addr));
 
+    // Print info
+    printf("User:       %s\n", fields.user);
+    puts("Password:   *****");
+    printf("Host:       %s\n", fields.host);
+    printf("URL:        %s\n", fields.url);
+    printf("Host name:  %s\n", h->h_name);
+    printf("IP Address: %s\n", address);
+    printf("Port:       %d\n\n", SERVER_PORT);
+
+    // Open socket
     int sockfd = create_socket(address, SERVER_PORT);
-
-    /* Read from server */
-
-    char buf[MAX_LEN];
     FILE* fp = fdopen(sockfd, "r");
 
-    do {
-        fgets(buf, MAX_LEN-1, fp);
-        printf("%s", buf);
-    } while (buf[3] == '-');
-
-    // Success
-    if(buf[0] != '2'){  
+    if (readFromSocket(fp) != '2') {
         printf("ERROR: Error in connection.\n");
         exit(1);
     }
@@ -50,82 +43,44 @@ int main(int argc, char** argv) {
         pass password\n
     */
 
-    // Send user
-    if (write(sockfd, "user ", 5) < 0){
+    // Send User
+    char buf[MAX_LEN];
+    sprintf(buf, "user %s\n", fields.user);
+    if (write(sockfd, buf, strlen(buf)) < 0) {
         printf("ERROR: Failed to send user.\n");
         exit(1);
     }
-
-    if (write(sockfd, fields.user, strlen(fields.user)) < 0){
-        printf("ERROR: Failed to send username.\n");
-        exit(1);
-    }
-
-    if(write(sockfd, "\n", 1) < 0){
-        printf("ERROR: Failed to send newline.\n");
-        exit(1);
-    }
-
-    // Read Response
-    do {
-        fgets(buf, MAX_LEN-1, fp);
-        printf("%s", buf);
-    } while (buf[3] == '-');
+    char res = readFromSocket(fp);
 
     // Check if it server sent "331 Please specify the password".
-    // TODO: Check server other messages
-    if(buf[0] == '3'){ // Asking for password
-        // Send password
-        if(write(sockfd, "pass ", 5) < 0){
-            printf("ERROR: Failed to send password.\n");
-            exit(1);
-        }
-
+    if (res == '3') {
         //Check if password is set
-        if(!strcmp(fields.password, "")){
-            if(!strcmp(fields.user, "anonymous")) 
-                strcpy(fields.password, "");
-
-            else {
-                char pass[MAX_LEN];
+        if (!strcmp(fields.password, "")) {
+            if (strcmp(fields.user, "anonymous")) {
                 printf("\nPlease input a password: ");
+                char pass[MAX_LEN];
                 fgets(pass, sizeof(pass), stdin);
                 strcpy(fields.password, pass);
             }
         }
-
-        if(write(sockfd, fields.password, strlen(fields.password)) < 0){
+        // Send password
+        sprintf(buf, "pass %s\n", fields.password);
+        if (write(sockfd, buf, strlen(buf)) < 0) {
             printf("ERROR: Failed to send password.\n");
             exit(1);
         }
 
-        if(write(sockfd, "\n", 1) < 0){
-            printf("ERROR: Failed to send newline.\n");
-            exit(1);
-        }
-
-        // Read Response
-        do {
-            fgets(buf, MAX_LEN-1, fp);
-            printf("%s", buf);
-        } while (buf[3] == '-');
-
-        // Check if it server sent "230 Login successful."
-        if (buf[0] != '2') {
+        if (readFromSocket(fp) != '2') {
             printf("ERROR: Login was not successful.\n");
             exit(1);
-        } 
-    } 
-    else if(buf[0] != '2'){
-        printf("ERROR: Failed sending user.\n");
+        }
+    } else if (res != '2') {
+        printf("ERROR: Failed to send user.\n");
         exit(1);
     }
 
-
     // Enter passive mode
-
-    // send pasv
-    if(write(sockfd, "pasv\n", 5) < 0){
+    if (write(sockfd, "pasv\n", 5) < 0) {
         printf("ERROR: Failed to send pasv.\n");
         exit(1);
     }
@@ -136,38 +91,35 @@ int main(int argc, char** argv) {
         printf("%s", buf);
     } while (buf[3] == '-');
 
-    /* Check if server sent "227 Entering Passive Mode (193,136,28,12,19,91)" */
     if (buf[0] != '2') {
         printf("ERROR: Failed to enter passive mode.\n");
         exit(1);
-    } 
-
-    /* Get server port for file transfer */
+    }
 
     int port = get_port(buf);
     int data_socket_fd = create_socket(address, port);
-    
-    // Write retr <URL>    
-    write(sockfd, "retr ", 5);
 
-    if (write(sockfd, fields.url, strlen(fields.url)) < 0){
-        printf("ERROR: Failed to send URL.\n");
+    sprintf(buf, "retr %s\n", fields.url);
+    if (write(sockfd, buf, strlen(buf)) < 0) {
+        printf("ERROR: Failed to send retr command.\n");
         exit(1);
     }
-
-    write(sockfd, "\n", 1);
 
     do {
         fgets(buf, MAX_LEN - 1, fp);
         printf("%s", buf);
     } while (buf[3] == '-');
 
-    if (buf[0] != '2' && buf[0] != '1') 
+    if (buf[0] != '2' && buf[0] != '1') {
+        printf("ERROR: Failed to retrieve file.\n");
+        close(data_socket_fd);
+        close(sockfd);
         exit(1);
+    }
 
     int file_size = get_file_size(buf);
     download_file(file_size, data_socket_fd, fields.url);
-    
+
     close(data_socket_fd);
     close(sockfd);
 

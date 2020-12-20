@@ -20,18 +20,16 @@
  * Struct used to store fields passed in arguments
 */
 struct fields {
-    char user[MAX_LEN];
-    char password[MAX_LEN];
-    char url[MAX_LEN];
-    char host[MAX_LEN];
+    char user[50];
+    char password[50];
+    char url[100];
+    char host[50];
 };
 
 /**
  * Parses arguments of a "ftp://[<user>:<password>@]<host>/<url-path>" string 
 */
 int parse_fields(char* arguments, struct fields* fields);
-
-void print_fields(struct fields fields);
 
 int get_port(char* str);
 
@@ -42,3 +40,5 @@ int get_file_size(char* response);
 int download_file(int file_size, int data_socket_fd, char* filepath);
 
 void progress_bar(float percentage);
+
+char readFromSocket(FILE* fp);
