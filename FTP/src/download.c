@@ -18,6 +18,7 @@ int main(int argc, char** argv) {
         herror("gethostbyname");
         exit(1);
     }
+    // Get IP
     char* address = inet_ntoa(*((struct in_addr*) h->h_addr));
 
     // Print info
@@ -33,6 +34,7 @@ int main(int argc, char** argv) {
     int sockfd = create_socket(address, SERVER_PORT);
     FILE* fp = fdopen(sockfd, "r");
 
+    // Welcome Message
     if (readFromSocket(fp) != '2') {
         printf("ERROR: Error in connection.\n");
         exit(1);
@@ -50,6 +52,8 @@ int main(int argc, char** argv) {
         printf("ERROR: Failed to send user.\n");
         exit(1);
     }
+
+    // Read response
     char res = readFromSocket(fp);
 
     // Check if it server sent "331 Please specify the password".
@@ -57,6 +61,7 @@ int main(int argc, char** argv) {
         //Check if password is set
         if (!strcmp(fields.password, "")) {
             if (strcmp(fields.user, "anonymous")) {
+                // Ask for user password
                 printf("\nPlease input a password: ");
                 char pass[MAX_LEN];
                 fgets(pass, sizeof(pass), stdin);
@@ -69,7 +74,7 @@ int main(int argc, char** argv) {
             printf("ERROR: Failed to send password.\n");
             exit(1);
         }
-
+        // Read response
         if (readFromSocket(fp) != '2') {
             printf("ERROR: Login was not successful.\n");
             exit(1);
@@ -84,8 +89,7 @@ int main(int argc, char** argv) {
         printf("ERROR: Failed to send pasv.\n");
         exit(1);
     }
-
-    // Read Response
+    // Read response
     do {
         fgets(buf, MAX_LEN - 1, fp);
         printf("%s", buf);
@@ -95,16 +99,15 @@ int main(int argc, char** argv) {
         printf("ERROR: Failed to enter passive mode.\n");
         exit(1);
     }
-
-    int port = get_port(buf);
-    int data_socket_fd = create_socket(address, port);
-
+    // Open socket
+    int data_socket_fd = create_socket(address, get_port(buf));
+    // Send retr command
     sprintf(buf, "retr %s\n", fields.url);
     if (write(sockfd, buf, strlen(buf)) < 0) {
         printf("ERROR: Failed to send retr command.\n");
         exit(1);
     }
-
+    // Read response
     do {
         fgets(buf, MAX_LEN - 1, fp);
         printf("%s", buf);
@@ -112,14 +115,10 @@ int main(int argc, char** argv) {
 
     if (buf[0] != '2' && buf[0] != '1') {
         printf("ERROR: Failed to retrieve file.\n");
-        close(data_socket_fd);
-        close(sockfd);
         exit(1);
     }
 
-    int file_size = get_file_size(buf);
-    download_file(file_size, data_socket_fd, fields.url);
-
+    download_file(get_file_size(buf), data_socket_fd, fields.url);
     close(data_socket_fd);
     close(sockfd);
 
