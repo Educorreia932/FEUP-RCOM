@@ -1,0 +1,160 @@
+\documentclass[addpoints]{exam}
+
+\usepackage{amsmath}
+\usepackage[utf8]{inputenc}
+\usepackage{tikz}
+
+\usetikzlibrary{shapes.geometric, arrows, fit, matrix, positioning}
+
+\begin{document}
+
+\section*{Exame 2019/2020 (Época Normal)}
+
+\subsection*{Parte 1}
+
+\begin{questions}
+
+\question Uma rede composta por um conjunto de routers IP interligados entre si constitui
+
+a) Uma rede de comutação de pacotes e oferece um serviço não orientado às ligações
+
+\question A eficiência de um canal rádio (bit/s/Hz), caracterizável pela lei de Shannon log2(1+SNR),
+
+b) Aumenta quando d diminui e B diminui. 
+
+\question Se a probabilidade de uma trama ser recebida com erros for F e se esta mesma trama for transmitida L vezes, então a probabilidade da trama ser recebida corretamente é 
+
+b) $1-F^{L}$ 
+
+
+\question Considere o mecanismo ARQ Selective-Repeat estudado nas aulas e usando 2 bits de numeração. Considere também
+que o funcionamento do Emissor é descrito numa notação em que !I(0).?RR(1) representa a emissão (!) da
+mensagem I(0) seguida (.) da receção (?) da mensagem RR(1). Após a ocorrência dos eventos !I(0).!I(1), o emissor
+
+d) Para e espera por receção de uma mensagem de confirmação.
+
+\question Considere uma interface de comunicações de rede modelizável por uma fila de espera M/M/1 caracterizada por uma taxa de chegada de $\lambda$ pacote/s uma capacidade de C bit/s, que origina um número médio de pacotes na fila N e um atraso médio de T. Se esta fila passar a ser caracterizada por $\lambda$’=10$\lambda$ e C’=10C, então, para o mesmo comprimento médio dos pacotes,
+
+c) N’=N e T’=T/10
+
+\question Assuma um cenário composto por 2 computadores A e B implementando o protocolo de acesso ao meio CSMA/CD
+(Collision Detection), e interligados entre si através de um comutador Ethernet. As portas de rede dos computadores
+e do comutador funcionam em modo full-duplex. Se o computador A estiver a transmitir uma trama e o computador
+B também tiver uma trama para transmitir, o computador B
+
+d) Transmite de imediato e não haverá colisão.
+
+\question Assuma o seguinte cenário de ligações [A]—0[SW]1—0[RT]1—[B]. Neste cenário, o computador A está ligado
+à porta 0 do comutador Ethernet SW, a porta 1 do comutador SW está ligada à porta 0 do router RT, e o computador
+B está ligado diretamente à porta 1 do router RT. Nesta situação, quando o computador B envia um pacote IP para
+o computador A, os endereços IP e MAC de origem constantes da trama recebida pelo computador A são os
+seguintes:
+
+b) Endereço IP de B, endereço MAC de RT.porta0
+
+\question Assuma dois computadores ligados à Internet e uma ligação TCP estabelecida entre eles. A distância que separa os
+computadores é de D, a capacidade mínima da várias ligações atravessadas pelos pacotes é C, o valor médio da
+janela de congestionamento da ligação TCP é W e o Round Trip Time é R. Nesta situação, o débito médio esperado
+para esta ligação TCP é de: 
+
+b) W/R.
+
+\question Que protocolo de transporte (UDP ou TCP) usaria para as seguintes aplicações: A1) obtenção de informação do
+servidor de nomes DNS; A2) envio de um email; A3) transferência de voz em pacotes. 
+
+b) A1=UDP; A2=TCP; A3=UDP.
+
+\question Admita que 2 nós A e B se encontram interligados através da rede composta pelos comutadores R1 e R2 e pelas
+ligações bidirecionais com as capacidades indicadas na figura. Assumindo que o custo das ligações é inversamente
+proporcional ao valor da sua capacidade e que todos os pacotes enviados de A para B seguem o caminho de custo
+mínimo, o débito máximo possível entre A e B é de
+
+b) 2 Mbit/s
+
+\end{questions}
+
+\subsection*{Parte 2}
+
+\begin{questions}
+    
+\question Duas estações comunicam usando uma ligação de dados baseada num mecanismo ARQ do tipo Selective Repeat. A
+capacidade do canal, em cada sentido, é de 2 Mbit/s, o atraso de propagação entre estações é de 250 ms e os pacotes
+têm um tamanho de 250 Bytes. Assuma duas situações de erro distintas: BER1=0 e $BER_{2}=10^{-4}$
+.
+
+\begin{parts}
+
+\part Considere inicialmente que as tramas são numeradas módulo 64. Calcule a eficiência máxima do
+protocolo e o débito máximo para as duas situações de erro.
+
+$R = 2 Mbit/s = 2 \cdot 10^{6} bits/s$
+
+$T_{p} = 250 ms = 0.250 s$   
+
+$L = 250 Bytes = 2000 bits$
+
+$BER_{1} = 0$
+
+$BER_{2} = 10^{-4}$
+
+$FER_{1} = 0$
+
+$
+FER_{2} = 1 - (1 - BER_{2})^{L} 
+        = 1 - (1 - 10^{-4})^{2000}
+        = 0.181277
+$
+
+$
+T_{f} = \frac{L}{R}
+      = \frac{2000}{2 \cdot 10^{6}}
+      = 0.001
+$
+
+$
+a = \frac{T_{p}}{T_{f}}
+  = \frac{0.250}{0.001}
+  = 250
+$
+
+$
+W_{max} = \frac{M}{2} 
+        = \frac{64}{2}
+        = 32
+$
+
+$
+S_{1} = \frac{T_{p}}{T_{f}}
+      = \frac{W \cdot (1 - FER_{1})}{1 + 2a}
+      = \frac{32}{1 + 2 \cdot 250}
+      = 0.063872
+      = 6.4 \%
+$
+
+$
+S_{2} = \frac{T_{p}}{T_{f}}
+      = \frac{W \cdot (1 - FER_{2})}{1 + 2a}
+      = \frac{32 \cdot (1 - 0.181277)}{1 + 2 \cdot 250}
+      = 0.052294
+      = 5.1 \%
+$
+
+$
+R_{max_{1}} = S_{1} \cdot R
+            = 0.063872 \cdot 2 \cdot 10^{6}
+            = 127745 bits/s
+            = 128 kbits/s
+$
+
+$
+R_{max_{2}} = S_{2} \cdot R
+            = 0.052294 \cdot 2 \cdot 10^{6}
+            = 104587 bits/s
+            = 105 kbits/s
+$
+
+\end{parts}
+
+\end{questions}
+
+\end{document}

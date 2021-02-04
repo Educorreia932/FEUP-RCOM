@@ -1,0 +1,240 @@
+\documentclass[addpoints]{exam}
+
+\usepackage{amsmath}
+\usepackage[utf8]{inputenc}
+\usepackage{tikz}
+
+\usetikzlibrary{shapes.geometric, arrows, fit, matrix, positioning}
+
+\begin{document}
+
+\section*{Exame Exemplo}
+
+\textbf{Nota:} Este é o mesmo exame do que o de 2019/2020 época normal, mas apresentado de maneira diferente.
+
+\begin{questions}
+
+\question Pergunta 1
+
+e.
+
+\question Pergunta 2
+
+a.
+
+\question Pergunta 3
+
+b.
+
+\question Pergunta 4
+
+c.
+
+\question Pergunta 5
+
+b.
+
+\question Pergunta 6
+
+b. 
+
+\question Pergunta 7
+
+b.
+
+\question Pergunta 8
+
+a. 
+
+\question Pergunta 9
+
+c.
+
+\question Pergunta 10
+
+b.
+
+\question Pergunta 11
+
+$R = 2 Mbit/s = 2 \cdot 10^{6} bits/s$
+
+$T_{p} = 250 ms = 0.250 s$   
+
+$L = 250 Bytes = 2000 bits$
+
+$BER = 10^{-4}$
+
+$
+FER = 1 - (1 - BER)^{L} 
+        = 1 - (1 - 10^{-4})^{2000}
+        = 0.181277
+$
+
+$
+T_{f} = \frac{L}{R}
+      = \frac{2000}{2 \cdot 10^{6}}
+      = 0.001
+$
+
+$
+a = \frac{T_{p}}{T_{f}}
+  = \frac{0.250}{0.001}
+  = 250
+$
+
+$
+W_{max} = \frac{M}{2} 
+        = \frac{64}{2}
+        = 32
+$
+
+$
+S = \frac{W \cdot (1 - FER)}{1 + 2a}
+  = \frac{32 \cdot (1 - 0.181277)}{1 + 2 \cdot 250}
+  = 0.052294
+  = 5.1 \%
+$
+
+$
+R_{max} = S \cdot R
+        = 0.052294 \cdot 2 \cdot 10^{6}
+        = 104587 bits/s
+        = 105 kbits/s
+$
+
+\question Pergunta 12
+
+$
+1 = \frac{W}{1 + 2a}
+\iff W = 501
+$
+
+$W_{max} = 512$
+
+\question Pergunta 13
+
+$
+L' = 1.3 \cdot L
+   = 1.3 \cdot 2000
+   = 2600
+$
+
+$FER' = 5\%$
+
+$
+T_{f}' = \frac{L}{R}
+       = \frac{2600}{2 \cdot 10^{6}}
+       = 0.0013
+$
+
+$
+a' = \frac{T_{p}}{T_{f}'}
+   = \frac{0.250}{0.0013}
+   = 192.308
+$
+
+$
+S' = \frac{W \cdot (1 - FER')}{1 + 2a'}
+   = \frac{32 \cdot (1 - 0.05)}{1 + 2 \cdot 192.308}
+   = 0.078835
+$
+
+$
+R_{max}' = S' \cdot R
+         = 0.078835 \cdot 2 \cdot 10^{6}
+         = 157670 bits/s
+         = 158 kbits/s
+$
+
+\question Pergunta 14
+
+$\lambda = 600$
+
+$L = 1500 \text{ bytes} = 12000 \text{ bits}$
+
+$\rho = 100\% - 40\% = 0.6$
+
+$
+N = \frac{\rho}{1 - \rho}
+  = \frac{0.6}{1 - 0.6}
+  = 1.5
+$
+
+$
+T = \frac{N}{\lambda} 
+  = \frac{1.5}{600}
+  = 0.0025 \text{ s}
+  = 2.5 \text{ ms}
+$
+
+\question Pergunta 15   
+
+$
+P(1) = \frac{(1 - \rho) \rho^{B}}{1 - \rho^{B + 1}}
+     = \frac{(1 - 0.6) 0.6}{1 - 0.6^{2}}
+     = 0.375
+$
+
+\question Pergunta 16
+
+$
+N_{w} = \rho \cdot N 
+      = 0.6 \cdot 1.5
+      = 0.9
+$
+
+\question Pergunta 17
+
+\begin{center}
+	\begin{tikzpicture}[->,>=stealth',level/.style={sibling distance = 8cm/#1,
+		level distance = 1.5cm}, transform shape]
+		\node {77.77.77.64/26}
+		child
+		{
+			node {77.77.77.64/27} 
+			child
+			{
+				node {77.77.77.64/28} 
+				child
+				{
+					node {77.77.77.64/29} 
+					child
+					{
+						node {77.77.77.64/30} 
+					}
+				}
+				child
+				{
+					node {77.77.77.72/29} 
+				}
+			}
+			child
+			{
+				node {77.77.77.80/28} 
+			}
+		}
+		child
+		{
+			node {77.77.77.96/27} 
+		}
+	;
+	\end{tikzpicture}
+\end{center}
+
+77.77.77.96/27
+
+\question Pergunta 18
+
+77.77.77.95
+
+\question Pergunta 19
+
+77.77.77.78
+
+\question Pergunta 20
+
+77.77.77.65
+
+\end{questions}
+
+\end{document}
